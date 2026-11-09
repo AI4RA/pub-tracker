@@ -16,6 +16,7 @@ Everything runs in your browser. There is no server of ours in the middle: the f
    - **Semantic Scholar** ranks authors by name, affiliation and paper count, then sorts their papers by date.
    - **PubMed** searches the full author name with the institution in the affiliation field, and falls back to surname + first initial within that affiliation.
    - When an institution is given, a source reports "not found" rather than guess among namesakes elsewhere.
+   - Only papers count: articles, preprints, conference papers, reviews, books, chapters, reports and theses. Datasets, software, posters and talks (including Zenodo and figshare deposits) are skipped.
 4. **Download** the `.xlsx`:
    - **Most recent paper**: one row per PI, with the newest paper dated on or before today across all sources, the sources that agree with it, confidence, ORCID, and a Google Scholar search link.
    - **By source**: each source's answer for each PI and how it matched, for auditing.

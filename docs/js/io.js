@@ -115,6 +115,7 @@ export function writeWorkbook(records, meta) {
     [],
     ['How the most recent paper is chosen'],
     ['Each source is searched for the PI. The newest paper with a publication date on or before today wins; papers dated in the future (forthcoming issues) are skipped.'],
+    ['Only papers count (articles, preprints, conference papers, reviews, books, chapters, reports, theses); datasets, software, posters and talks are left out.'],
     ['"Sources agreeing" lists every source whose newest paper has the same DOI or title.'],
     ['Confidence: High = two or more sources agree, or the ORCID iD came from your file. Medium = one source, matched by ORCID or by name plus institution. Low = matched by name only; check it.'],
     ['Google Scholar cannot be searched from a web page, so the "Google Scholar search" link opens a date-sorted search to check by hand.'],

@@ -3,10 +3,13 @@
 // Upstream: https://pub.orcid.org/v3.0. No key needed.
 
 import { getJSON, Limiter } from '../http.js';
-import { nameScore, affiliationMatch, normDate, dateKey, normalizeDoi } from '../match.js';
+import { nameScore, affiliationMatch, normDate, dateKey, normalizeDoi, isDepositDoi } from '../match.js';
 
 const BASE = 'https://pub.orcid.org/v3.0';
 const limiter = new Limiter(120);
+// ORCID work types that count as a paper (not data-set, software, lecture-speech, other...).
+const PAPER_TYPES = new Set(['journal-article', 'conference-paper', 'preprint', 'book', 'book-chapter', 'edited-book',
+  'report', 'dissertation-thesis', 'review', 'working-paper', 'magazine-article', 'book-review']);
 
 export const id = 'orcid';
 export const label = 'ORCID';
@@ -56,6 +59,7 @@ export async function lookup(pi, ctx) {
   const today = new Date().toISOString().slice(0, 10);
   const works = (body.group || []).map(g => {
     const s = (g['work-summary'] || [])[0] || {};
+    if (!PAPER_TYPES.has(s.type)) return null;
     const ids = s['external-ids']?.['external-id'] || [];
     const doi = normalizeDoi(ids.find(x => x['external-id-type'] === 'doi')?.['external-id-value']);
     const pd = s['publication-date'] || {};
@@ -66,11 +70,11 @@ export async function lookup(pi, ctx) {
       doi, d,
       url: doi ? `https://doi.org/${doi}` : (s.url?.value || `https://orcid.org/${found.orcid}`),
     };
-  }).filter(w => w.d && dateKey(w.d) <= dateKey(today));
+  }).filter(w => w && w.d && dateKey(w.d) <= dateKey(today) && !isDepositDoi(w.doi));
   works.sort((a, b) => dateKey(b.d).localeCompare(dateKey(a.d)));
 
   const authorUrl = `https://orcid.org/${found.orcid}`;
-  if (!works.length) return { status: 'none', note: `${found.note}; record lists no dated works`, authorUrl, orcid: found.orcid };
+  if (!works.length) return { status: 'none', note: `${found.note}; record lists no dated papers`, authorUrl, orcid: found.orcid };
   const w = works[0];
   return {
     status: 'found',

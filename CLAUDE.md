@@ -36,6 +36,7 @@ docs/js/
 ## Matching rules
 
 - When an institution is known, a source returns "none" rather than guess among namesakes elsewhere.
+- Papers only: OpenAlex `type:` filter, ORCID work-type allowlist, Semantic Scholar drops Dataset/News; untyped Zenodo (10.5281) / figshare (10.6084) DOIs are skipped (`isDepositDoi` in match.js).
 - Newest paper dated on or before today wins (future-dated forthcoming issues are skipped).
 - Confidence: High = ≥2 sources agree (DOI or title) or ORCID came from the upload; Medium = one source matched by ORCID or name + institution; Low = name only.
 

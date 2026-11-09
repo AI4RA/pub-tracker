@@ -8,6 +8,8 @@ import { nameScore, affiliationMatch, normDate, normalizeDoi } from '../match.js
 
 const BASE = 'https://api.openalex.org';
 const limiter = new Limiter(120);
+// OpenAlex work types that count as a paper (not dataset, paratext, erratum, peer-review, other...).
+const PAPER_TYPES = 'article|preprint|review|book-chapter|book|letter|report|dissertation|editorial';
 
 export const id = 'openalex';
 export const label = 'OpenAlex';
@@ -83,7 +85,7 @@ export async function lookup(pi, ctx) {
 
   const authorId = String(author.id).split('/').pop();
   const works = await getJSON(`${BASE}/works?${params(keys, {
-    filter: `author.id:${authorId}`,
+    filter: `author.id:${authorId},type:${PAPER_TYPES}`,
     sort: 'publication_date:desc',
     per_page: '5',
     select: 'id,doi,title,publication_date,publication_year,primary_location,type',

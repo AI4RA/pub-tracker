@@ -94,6 +94,7 @@ body {
 .hint a, .card a { color: #7a5a00; }
 
 .upload-zone {
+  display: block;
   border: 2px dashed rgba(25,25,25,0.2);
   border-radius: 0.6rem;
   padding: 1.5rem;

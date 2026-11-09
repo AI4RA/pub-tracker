@@ -106,6 +106,14 @@ export function dateKey(d) {
   return (d || '').padEnd(10, '0');
 }
 
+// Papers only: datasets, software, posters, talks and the like don't count.
+// Zenodo (10.5281) and figshare (10.6084) DOIs are almost always deposits of
+// data or code, so they are skipped when a source gives no type to go on.
+const DEPOSIT_DOI = /^10\.(5281|6084)\//;
+export function isDepositDoi(doi) {
+  return DEPOSIT_DOI.test(doi || '');
+}
+
 export function titleKey(t) {
   return norm(t).replace(/\s/g, '').slice(0, 60);
 }
