@@ -195,6 +195,9 @@ table.results tr.pending td { color: var(--muted); }
 }
 .key-field input:focus { outline: none; border-color: var(--gold); }
 .key-field .hint { margin-top: 0.2rem; font-size: 0.8rem; }
+.modal-dialog .fine { margin: 0.35rem 0 0; }
+.modal-dialog .fine summary { cursor: pointer; color: #7a5a00; font-weight: 700; font-size: 0.85rem; }
+.modal-dialog .fine p, .modal-dialog .fine ol { font-size: 0.85rem; line-height: 1.5; color: #333; margin: 0.4rem 0; }
 .modal-close-btn {
   display: inline-block;
   padding: 0.5rem 1.5rem;

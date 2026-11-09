@@ -45,6 +45,19 @@ for (const f of KEY_FIELDS) {
   hint.className = 'hint';
   hint.textContent = f.help;
   div.append(lab, input, hint);
+  if (f.get) {
+    const det = document.createElement('details');
+    det.className = 'fine';
+    const sum = document.createElement('summary');
+    sum.textContent = 'How to get one';
+    const ol = document.createElement('ol');
+    for (const step of f.get.steps) ol.append(Object.assign(document.createElement('li'), { textContent: step }));
+    const p = document.createElement('p');
+    const a = Object.assign(document.createElement('a'), { href: f.get.url, target: '_blank', rel: 'noopener', textContent: f.get.linkText });
+    p.append('Start here: ', a, `. ${f.get.time}`);
+    det.append(sum, p, ol);
+    div.append(det);
+  }
   keyBox.append(div);
 }
 function updateKeyDot() {

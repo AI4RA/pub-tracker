@@ -33,14 +33,16 @@ Google Scholar has no public API and blocks requests from other websites, and so
 
 ## API keys (optional)
 
-Pub Tracker works with no keys. A free key of your own raises a service's limits, which helps with long lists. Open **API Keys** on the site, or pass them in the URL (read once, then stripped from the address bar): `?openalex=…&s2=…&ncbi=…&email=…`. Keys are held in `sessionStorage` and cleared when you close or reload the tab, and each goes only to the service that issued it.
+**Pub Tracker works with no keys.** ORCID and Google Scholar never need one. Keys only raise limits for longer lists. As a rough guide, up to about 50 PIs runs fine with no keys; for a few hundred, get an OpenAlex key. If a source hits its limit mid-run, that source shows "Rate limit or daily budget reached" for the remaining PIs and the other sources carry on.
 
-| Key | Where | Without it |
-|---|---|---|
-| OpenAlex | [openalex.org/settings/api](https://openalex.org/settings/api) (free) | Shares $0.10/day of usage with everyone on your network, about 100 PIs a day |
-| Semantic Scholar | [semanticscholar.org/product/api](https://www.semanticscholar.org/product/api) (free, on request) | Shared public pool, about one request a second; sets the pace (~2 s per PI) |
-| NCBI (PubMed) | [NCBI account settings](https://account.ncbi.nlm.nih.gov/settings/) (free) | 3 requests a second instead of 10 |
-| Contact email | — | Sent to OpenAlex and PubMed as the contact they ask heavy users for |
+Add keys under **API Keys** on the site, or pass them in the URL (read once, then stripped from the address bar): `?openalex=…&s2=…&ncbi=…&email=…`. Keys are held in `sessionStorage`, cleared when you close or reload the tab, and each goes only to the service that issued it.
+
+| Key | Without it | With it | How to get one |
+|---|---|---|---|
+| **OpenAlex** | $0.10/day of usage shared by everyone on your network: about 50 to 100 PIs | Your own $1/day: about 500 to 1,000 PIs | Free, about a minute. [Make an account](https://openalex.org/signup), click the link in the verification email (the key doesn't work until you do), then copy the key from [Settings → API key](https://openalex.org/settings/api-key). |
+| **Semantic Scholar** | Shared public pool; slowed or refused at busy times | A steady 1 request/second of your own | Free, but reviewed by hand, so allow a few days to a few weeks. Fill in the [API key request form](https://www.semanticscholar.org/product/api#api-key-form) (name, email, institution, intended use); the key arrives by email. Until then, untick Semantic Scholar for big runs. |
+| **NCBI (PubMed)** | 3 requests/second, usually enough | 10 requests/second | Free, instant. Sign in at [NCBI](https://account.ncbi.nlm.nih.gov/settings/) (Google, ORCID, Login.gov or many university logins work), open Account Settings → API Key Management, click **Create an API Key**. |
+| **Contact email** | — | — | Your own address. Sent to OpenAlex and PubMed as the contact they ask heavy users for. |
 
 ## Run locally
 

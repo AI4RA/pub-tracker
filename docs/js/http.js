@@ -57,8 +57,17 @@ export async function getJSON(url, { limiter, signal, headers = {}, retries = 4 
       await sleep(ra > 0 ? ra * 1000 : backoff(attempt), signal);
       continue;
     }
+    if (res.status === 429) {
+      throw new HttpError(429, 'Rate limit or daily budget reached. Wait and run again, or add a free API key for this source.');
+    }
     let detail = '';
     try { detail = (await res.text()).slice(0, 200); } catch { /* ignore */ }
+    if (res.status === 403 && /key_not_activated/.test(detail)) {
+      throw new HttpError(403, 'This API key is not active yet: click the link in the verification email.');
+    }
+    if (res.status === 401 || res.status === 403) {
+      throw new HttpError(res.status, 'The API key was refused. Check it under API Keys, or remove it to run without one.');
+    }
     throw new HttpError(res.status, `HTTP ${res.status}${detail ? ': ' + detail : ''}`);
   }
 }

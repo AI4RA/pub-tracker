@@ -77,7 +77,8 @@
     <div id="api-key-modal" class="modal-overlay">
       <div class="modal-dialog">
         <h2>API keys (optional)</h2>
-        <p>Pub Tracker works without any keys. A free key of your own raises a service's limits, which helps with long lists. Each key is sent only to the service that issued it.</p>
+        <p><strong>You don't need any keys.</strong> Pub Tracker works without them, and ORCID and Google Scholar never need one. Keys only matter for longer lists: a free key of your own raises that service's limits. Each key is sent only to the service that issued it.</p>
+        <p class="hint">Rough guide: with no keys, a list of up to about 50 PIs runs fine. For a few hundred, get an OpenAlex key (one minute). Request a Semantic Scholar key well in advance; approval can take weeks. In the meantime you can untick Semantic Scholar for big runs.</p>
         <div id="key-fields"></div>
         <p class="hint"><strong>Session only.</strong> Keys are held in this tab's session memory, never saved to disk, and cleared when you close or reload the tab. You can also pass them in the address, as <code>?openalex=…&amp;s2=…&amp;ncbi=…&amp;email=…</code>; they are read once and removed from the address bar.</p>
         <button class="modal-close-btn" id="api-key-close">Save</button>
