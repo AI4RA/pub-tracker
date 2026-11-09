@@ -3,7 +3,7 @@
 // Upstream: https://pub.orcid.org/v3.0. No key needed.
 
 import { getJSON, Limiter } from '../http.js';
-import { nameScore, affiliationMatch, normDate, dateKey, normalizeDoi, isDepositDoi } from '../match.js';
+import { nameScore, affiliationMatch, normDate, normalizeDoi, isDepositDoi } from '../match.js';
 
 const BASE = 'https://pub.orcid.org/v3.0';
 const limiter = new Limiter(120);
@@ -50,13 +50,13 @@ export async function findOrcid(pi, { signal }) {
   };
 }
 
-export async function lookup(pi, ctx) {
+// Every paper on the PI's ORCID record, newest first.
+export async function papers(pi, ctx) {
   const { signal } = ctx;
   const found = ctx.orcidResult || await findOrcid(pi, ctx);
   if (!found.orcid) return { status: 'none', note: found.note };
 
   const body = await getJSON(`${BASE}/${found.orcid}/works`, { limiter, signal });
-  const today = new Date().toISOString().slice(0, 10);
   const works = (body.group || []).map(g => {
     const s = (g['work-summary'] || [])[0] || {};
     if (!PAPER_TYPES.has(s.type)) return null;
@@ -70,18 +70,13 @@ export async function lookup(pi, ctx) {
       doi, d,
       url: doi ? `https://doi.org/${doi}` : (s.url?.value || `https://orcid.org/${found.orcid}`),
     };
-  }).filter(w => w && w.d && dateKey(w.d) <= dateKey(today) && !isDepositDoi(w.doi));
-  works.sort((a, b) => dateKey(b.d).localeCompare(dateKey(a.d)));
-
-  const authorUrl = `https://orcid.org/${found.orcid}`;
-  if (!works.length) return { status: 'none', note: `${found.note}; record lists no dated papers`, authorUrl, orcid: found.orcid };
-  const w = works[0];
+  }).filter(w => w && !isDepositDoi(w.doi)).map(({ d, ...w }) => ({ ...w, date: d }));
   return {
     status: 'found',
     authorName: found.orcid,
-    authorUrl,
+    authorUrl: `https://orcid.org/${found.orcid}`,
     orcid: found.orcid,
-    title: w.title, date: w.d, venue: w.venue, doi: w.doi, url: w.url,
     note: found.note,
+    papers: works,
   };
 }

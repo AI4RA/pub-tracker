@@ -4,7 +4,7 @@
 // No key needed; the public pool is throttled hard, so calls are spaced out.
 
 import { getJSON, Limiter } from '../http.js';
-import { nameScore, affiliationMatch, normDate, dateKey, normalizeDoi, isDepositDoi } from '../match.js';
+import { nameScore, affiliationMatch, normDate, normalizeDoi, isDepositDoi } from '../match.js';
 
 const BASE = 'https://api.semanticscholar.org/graph/v1';
 const limiter = new Limiter(1100);
@@ -20,7 +20,8 @@ function isPaper(p) {
   return true;
 }
 
-export async function lookup(pi, ctx) {
+// Every paper by the matched author, newest first.
+export async function papers(pi, ctx, { all = false } = {}) {
   const { keys, signal } = ctx;
   const headers = keys.s2 ? { 'x-api-key': keys.s2 } : {};
   limiter.setInterval(keys.s2 ? 1050 : 1100);
@@ -48,27 +49,12 @@ export async function lookup(pi, ctx) {
   else if (best.am) note = `Matched by name + affiliation (${scored.length} name match${scored.length > 1 ? 'es' : ''})`;
   else note = `Matched by name only (${scored.length} candidate${scored.length > 1 ? 's' : ''}); verify`;
 
-  const pq = new URLSearchParams({ fields: 'title,publicationDate,year,venue,externalIds,url,publicationTypes', limit: '500' });
-  const papers = await getJSON(`${BASE}/author/${best.a.authorId}/papers?${pq}`, { limiter, signal, headers });
-  const today = new Date().toISOString().slice(0, 10);
-  const list = (papers.data || [])
-    .filter(isPaper)
-    .map(p => ({ p, d: normDate(p.publicationDate || p.year) }))
-    .filter(x => x.d && dateKey(x.d) <= dateKey(today))
-    .sort((x, y) => dateKey(y.d).localeCompare(dateKey(x.d)));
-  if (!list.length) return { status: 'none', note: `${note}; no dated papers`, authorName: best.a.name, authorUrl: best.a.url };
-
-  const { p, d } = list[0];
-  const doi = normalizeDoi(p.externalIds?.DOI);
-  return {
-    status: 'found',
-    authorName: best.a.name,
-    authorUrl: best.a.url,
-    title: p.title || '',
-    date: d,
-    venue: p.venue || '',
-    doi,
-    url: doi ? `https://doi.org/${doi}` : p.url,
-    note,
-  };
+  // The API does not sort an author's papers, so fetch them all and sort here.
+  const pq = new URLSearchParams({ fields: 'title,publicationDate,year,venue,externalIds,url,publicationTypes', limit: all ? '1000' : '500' });
+  const body2 = await getJSON(`${BASE}/author/${best.a.authorId}/papers?${pq}`, { limiter, signal, headers });
+  const list = (body2.data || []).filter(isPaper).map(p => {
+    const doi = normalizeDoi(p.externalIds?.DOI);
+    return { title: p.title || '', date: normDate(p.publicationDate || p.year), venue: p.venue || '', doi, url: doi ? `https://doi.org/${doi}` : p.url };
+  });
+  return { status: 'found', authorName: best.a.name, authorUrl: best.a.url, note, papers: list };
 }

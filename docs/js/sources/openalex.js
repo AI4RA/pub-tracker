@@ -36,7 +36,9 @@ function institutionId(name, keys, signal) {
   return instCache.get(k);
 }
 
-export async function lookup(pi, ctx) {
+// Every paper by the matched author, newest first. { all: false } fetches
+// only the first few, which is all the newest-paper lookup needs.
+export async function papers(pi, ctx, { all = false } = {}) {
   const { keys, signal } = ctx;
   let author = null;
   let note = '';
@@ -84,29 +86,35 @@ export async function lookup(pi, ctx) {
   }
 
   const authorId = String(author.id).split('/').pop();
-  const works = await getJSON(`${BASE}/works?${params(keys, {
-    filter: `author.id:${authorId},type:${PAPER_TYPES}`,
-    sort: 'publication_date:desc',
-    per_page: '5',
-    select: 'id,doi,title,publication_date,publication_year,primary_location,type',
-  })}`, { limiter, signal });
-
-  const today = new Date().toISOString().slice(0, 10);
-  // Skip records dated in the future (forthcoming issues carry placeholder dates).
-  const w = (works.results || []).find(x => !x.publication_date || x.publication_date <= today) || (works.results || [])[0];
-  if (!w) return { status: 'none', note: `${note}; author has no works`, authorName: author.display_name, authorUrl: author.id };
-
-  const doi = normalizeDoi(w.doi);
+  const out = [];
+  const perPage = all ? 100 : 5;
+  for (let page = 1; page <= (all ? 20 : 1); page++) {
+    const works = await getJSON(`${BASE}/works?${params(keys, {
+      filter: `author.id:${authorId},type:${PAPER_TYPES}`,
+      sort: 'publication_date:desc',
+      per_page: String(perPage),
+      page: String(page),
+      select: 'id,doi,title,publication_date,publication_year,primary_location,type',
+    })}`, { limiter, signal });
+    const results = works.results || [];
+    for (const w of results) {
+      const doi = normalizeDoi(w.doi);
+      out.push({
+        title: w.title || '',
+        date: normDate(w.publication_date || w.publication_year),
+        venue: w.primary_location?.source?.display_name || '',
+        doi,
+        url: doi ? `https://doi.org/${doi}` : (w.primary_location?.landing_page_url || w.id),
+      });
+    }
+    if (results.length < perPage) break;
+  }
   return {
     status: 'found',
     authorName: author.display_name,
     authorUrl: author.id,
-    title: w.title || '',
-    date: normDate(w.publication_date || w.publication_year),
-    venue: w.primary_location?.source?.display_name || '',
-    doi,
-    url: doi ? `https://doi.org/${doi}` : (w.primary_location?.landing_page_url || w.id),
-    note,
     orcid: author.orcid ? String(author.orcid).split('/').pop() : '',
+    note,
+    papers: out,
   };
 }

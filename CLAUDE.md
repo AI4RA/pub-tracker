@@ -11,6 +11,12 @@ Everything runs in the browser on GitHub Pages. The browser calls each upstream 
 - **Google Scholar** has no API and blocks cross-origin requests (SerpAPI blocks them too), so it is a per-PI search link only (`sources/scholar.js`).
 - Only name, institution and ORCID leave the browser. Other columns in the upload are never read.
 
+## Two ways to run
+
+- **The public site** (`docs/`, GitHub Pages from AI4RA/pub-tracker): a demo for one-off "most recent paper" lookups, plus the deploy guide (`docs/deploy.html`). Everything in the browser.
+- **A private copy made from the template**: `tracker/track.mjs`, run weekly by `.github/workflows/track.yml`, keeps `data/papers.xlsx` (one row per PI + paper, never deleted, with "First seen") from `data/pis.xlsx`, and reports new papers via a GitHub issue (default) and optional SMTP (`tracker/notify-email.mjs`). It imports the same `docs/js` modules, so keep those runnable in Node (no DOM at import time; `docs/js/package.json` marks them as ESM). The tracking workflow is guarded with `if: github.repository != 'AI4RA/pub-tracker'`, and the Pages job skips private repos. Never commit a real PI list or `papers.xlsx` here.
+- Reuse is welcome with attribution (NOTICE, LICENSE, a credit line); see the "Make it your own" sections of the README and deploy guide.
+
 ## Tech stack
 
 - **Vanilla JS** — ES modules, no build step, no framework
@@ -27,8 +33,8 @@ docs/js/
 ├── sources/       — one module per source: export id, label, lookup(pi, ctx)
 │   ├── orcid.js   — also exports findOrcid(), run first to hint the others
 │   ├── openalex.js, semanticscholar.js, pubmed.js
-│   └── scholar.js — link only
-├── lookup.js      — runs sources for one PI, picks newest, scores confidence
+│   └── scholar.js — link only (each other source exports papers(pi, ctx, { all }))
+├── lookup.js      — lookupPI (newest paper, website) and collectPapers (all papers, tracker)
 ├── io.js          — read upload, guess columns, write workbook
 └── app.js         — UI wiring
 ```

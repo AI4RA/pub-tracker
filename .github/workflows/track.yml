@@ -1,0 +1,85 @@
+# Scheduled Pub Tracker: keeps data/papers.xlsx up to date with every paper
+# for each PI in data/pis.xlsx, and notifies someone when new ones appear.
+#
+# It runs only in your own copy of the repository, never in AI4RA/pub-tracker
+# itself. Setup is in docs/deploy.html (https://ai4ra.github.io/pub-tracker/deploy.html).
+
+name: Track PI papers
+
+on:
+  schedule:
+    - cron: '0 13 * * 1'   # Mondays 13:00 UTC (6 or 7 am Mountain). Change to taste.
+  workflow_dispatch:
+
+permissions:
+  contents: write   # commit data/papers.xlsx back to the repo
+  issues: write     # open the "new papers" issue that GitHub emails out
+
+concurrency:
+  group: track
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  track:
+    if: github.repository != 'AI4RA/pub-tracker'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install
+        run: npm ci --prefix tracker
+
+      - name: Find papers
+        id: track
+        run: node tracker/track.mjs
+        env:
+          OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
+          S2_API_KEY: ${{ secrets.S2_API_KEY }}
+          NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
+          CONTACT_EMAIL: ${{ vars.CONTACT_EMAIL }}
+          DEFAULT_INSTITUTION: ${{ vars.DEFAULT_INSTITUTION }}
+          SOURCES: ${{ vars.SOURCES }}
+          NOTIFY_MAX_AGE_DAYS: ${{ vars.NOTIFY_MAX_AGE_DAYS }}
+
+      - name: Save the updated list
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/papers.xlsx
+          if git diff --cached --quiet; then
+            echo "No changes to data/papers.xlsx."
+          else
+            git commit -m "Track papers: ${{ steps.track.outputs.new_count }} new ($(date -u +%F))"
+            git push
+          fi
+
+      - name: Open an issue for new papers
+        if: steps.track.outputs.new_count != '0' && steps.track.outputs.new_count != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ASSIGNEES: ${{ vars.NOTIFY_GITHUB_USERS }}
+        run: |
+          args=(--title "${{ steps.track.outputs.new_count }} new papers ($(date -u +%F))" --body-file "${{ steps.track.outputs.new_file }}")
+          for u in ${ASSIGNEES//,/ }; do args+=(--assignee "$u"); done
+          gh issue create "${args[@]}"
+
+      - name: Email new papers (optional, needs SMTP secrets)
+        if: steps.track.outputs.new_count != '0' && steps.track.outputs.new_count != ''
+        run: node tracker/notify-email.mjs
+        env:
+          NEW_FILE: ${{ steps.track.outputs.new_file }}
+          NEW_COUNT: ${{ steps.track.outputs.new_count }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}

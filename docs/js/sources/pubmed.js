@@ -23,14 +23,15 @@ function quote(s) {
   return String(s).replace(/["[\]]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-async function search(term, keys, signal) {
-  const q = new URLSearchParams({ ...common(keys), db: 'pubmed', term, sort: 'pub_date', retmax: '3' });
+async function search(term, keys, signal, retmax) {
+  const q = new URLSearchParams({ ...common(keys), db: 'pubmed', term, sort: 'pub_date', retmax: String(retmax) });
   const body = await getJSON(`${BASE}/esearch.fcgi?${q}`, { limiter, signal });
   const r = body.esearchresult || {};
   return { count: Number(r.count || 0), ids: r.idlist || [] };
 }
 
-export async function lookup(pi, ctx) {
+// The PI's PubMed papers, newest first: a few, or with { all: true } up to 1,000.
+export async function papers(pi, ctx, { all = false } = {}) {
   const { keys, signal } = ctx;
   limiter.setInterval(keys.ncbi ? 120 : 400);
   const { first, middle, last } = pi.name;
@@ -48,30 +49,34 @@ export async function lookup(pi, ctx) {
 
   let hit = null;
   for (const t of tries) {
-    const r = await search(t.term, keys, signal);
+    const r = await search(t.term, keys, signal, all ? 1000 : 3);
     if (r.ids.length) { hit = { ...t, ...r }; break; }
   }
   if (!hit) {
     return { status: 'none', note: pi.institution ? `No papers for this name with "${pi.institution}" in the affiliation` : 'No papers for this name' };
   }
 
-  const q = new URLSearchParams({ ...common(keys), db: 'pubmed', id: hit.ids.join(',') });
-  const sum = await getJSON(`${BASE}/esummary.fcgi?${q}`, { limiter, signal });
-  const today = new Date().toISOString().slice(0, 10);
-  const recs = hit.ids.map(id => sum.result?.[id]).filter(Boolean)
-    .map(r => ({ r, d: normDate(r.sortpubdate?.replace(/\//g, '-') || r.pubdate) }));
-  const pick = recs.find(x => x.d && x.d <= today) || recs[0];
-  if (!pick) return { status: 'none', note: 'Summary unavailable' };
-  const { r, d } = pick;
-  const doi = normalizeDoi((r.articleids || []).find(a => a.idtype === 'doi')?.value || r.elocationid);
+  const list = [];
+  for (let i = 0; i < hit.ids.length; i += 200) {
+    const ids = hit.ids.slice(i, i + 200);
+    const q = new URLSearchParams({ ...common(keys), db: 'pubmed', id: ids.join(',') });
+    const sum = await getJSON(`${BASE}/esummary.fcgi?${q}`, { limiter, signal });
+    for (const id of ids) {
+      const r = sum.result?.[id];
+      if (!r) continue;
+      list.push({
+        title: (r.title || '').replace(/\.$/, ''),
+        date: normDate(r.sortpubdate?.replace(/\//g, '-') || r.pubdate),
+        venue: r.fulljournalname || r.source || '',
+        doi: normalizeDoi((r.articleids || []).find(a => a.idtype === 'doi')?.value || r.elocationid),
+        url: `https://pubmed.ncbi.nlm.nih.gov/${r.uid}/`,
+      });
+    }
+  }
   return {
     status: 'found',
     authorName: `${last}, ${first}`,
-    title: (r.title || '').replace(/\.$/, ''),
-    date: d,
-    venue: r.fulljournalname || r.source || '',
-    doi,
-    url: `https://pubmed.ncbi.nlm.nih.gov/${r.uid}/`,
     note: `${hit.note} (${hit.count} paper${hit.count === 1 ? '' : 's'})`,
+    papers: list,
   };
 }

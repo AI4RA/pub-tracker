@@ -1,0 +1,16 @@
+{
+  "name": "pub-tracker-scheduled",
+  "private": true,
+  "description": "Scheduled Pub Tracker: keeps a running list of every paper for each PI and reports new ones.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "track": "node track.mjs",
+    "notify-email": "node notify-email.mjs"
+  },
+  "dependencies": {
+    "nodemailer": "^7.0.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  }
+}

@@ -22,6 +22,9 @@ env:
 
 jobs:
   deploy:
+    # A private copy (see docs/deploy.html) has no use for the public site,
+    # and Pages on a private repo needs a paid plan, so skip it there.
+    if: ${{ !github.event.repository.private }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

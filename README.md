@@ -45,7 +45,21 @@ Add keys under **API Keys** on the site, or pass them in the URL (read once, the
 | **NCBI (PubMed)** | 3 requests/second, usually enough | 10 requests/second | Free, instant. Sign in at [NCBI](https://account.ncbi.nlm.nih.gov/settings/) (Google, ORCID, Login.gov or many university logins work), open Account Settings → API Key Management, click **Create an API Key**. |
 | **Contact email** | — | — | Your own address. Sent to OpenAlex and PubMed as the contact they ask heavy users for. |
 
-## Run locally
+## Run it yourself: scheduled tracking of every paper
+
+The public site is a demo for one-off lookups. To **track every paper** by your institution's PIs over time, make a private copy from this template:
+
+- Put your PI list in `data/pis.xlsx` and your API keys in repository secrets.
+- The **Track PI papers** workflow (`.github/workflows/track.yml`) runs weekly on GitHub Actions. It keeps `data/papers.xlsx` with one row per PI + paper, never deleting a row and recording when each paper was first seen, and commits it back.
+- When it finds new papers, it opens a GitHub issue listing them (GitHub emails the assignees, so no mail server is needed), and optionally sends an email over SMTP.
+
+Step-by-step setup: **[ai4ra.github.io/pub-tracker/deploy.html](https://ai4ra.github.io/pub-tracker/deploy.html)**. The tracker (`tracker/track.mjs`) reuses the website's own source modules, so both match people the same way. It also runs on your own computer: `npm ci --prefix tracker && node --env-file=.env tracker/track.mjs`. The tracking workflow never runs in this public repository.
+
+## Make it your own
+
+You're welcome to use the template, adapt it, and run it at your institution. We just ask for attribution: keep the [NOTICE](NOTICE) and [LICENSE](LICENSE) files (the Apache License requires this when you share the code or a derivative), and credit the project where you publish something built on it, for example *"Based on Pub Tracker by Nathan Layman (University of Idaho) and Stephen Wright (Idaho State University), an AI4RA project supported by NSF award 2427549."* To cite it, use [CITATION.cff](CITATION.cff). Improvements are welcome as pull requests (without your PI data).
+
+## Run the website locally
 
 ```bash
 python3 -m http.server 4173 -d docs

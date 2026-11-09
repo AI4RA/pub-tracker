@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f1b300" />
+    <title>Run Pub Tracker Yourself</title>
+    <meta name="description" content="Set up your own private, scheduled Pub Tracker: a running spreadsheet of every paper by your institution's PIs, updated weekly by GitHub Actions, with a notice when new papers appear." />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <a href="index.html" class="app-title-link"><h1><span>Pub</span> Tracker</h1></a>
+      <span class="app-subtitle">Run it yourself</span>
+      <div class="app-header-actions">
+        <a href="index.html" class="about-btn">Back to the tracker</a>
+        <a href="https://github.com/AI4RA/pub-tracker" target="_blank" rel="noopener" class="about-btn">GitHub</a>
+      </div>
+    </header>
+
+    <main class="app-body doc">
+      <h1>Run Pub Tracker at your institution</h1>
+      <p class="lede">The website finds each PI's <em>most recent</em> paper when you upload a list. If you want to <strong>track every paper</strong> over time, you can run your own private copy that does it on a schedule. GitHub Actions checks every PI each week, keeps a running spreadsheet with one row per PI and paper, and tells you when new papers appear.</p>
+      <p>You're welcome to take the template and make it your own. We just ask that you <a href="#yours">keep the attribution</a>.</p>
+
+      <nav class="toc" aria-label="On this page">
+        <strong>On this page</strong>
+        <ol>
+          <li><a href="#what">What you get</a></li>
+          <li><a href="#copy">Make a private copy</a></li>
+          <li><a href="#list">Add your PI list</a></li>
+          <li><a href="#keys">Add API keys as secrets</a></li>
+          <li><a href="#notify">Choose who hears about new papers</a></li>
+          <li><a href="#run">Run it the first time</a></li>
+          <li><a href="#schedule">Change the schedule</a></li>
+          <li><a href="#costs">Limits and costs</a></li>
+          <li><a href="#privacy">Where the data goes</a></li>
+          <li><a href="#updates">Getting updates</a></li>
+          <li><a href="#local">Running it on your own computer</a></li>
+          <li><a href="#trouble">Troubleshooting</a></li>
+          <li><a href="#yours">Make it your own, with credit</a></li>
+        </ol>
+      </nav>
+
+      <section id="what">
+        <h2>1. What you get</h2>
+        <ul>
+          <li><strong><code>data/pis.xlsx</code></strong>: your PI list, kept in the repository so it is always there for the next run. Edit it whenever people join or leave.</li>
+          <li><strong><code>data/papers.xlsx</code></strong>: a running list with <strong>one row per PI + paper</strong>, covering every paper found in OpenAlex, Semantic Scholar, PubMed and ORCID. Each row has a linked title, date, journal, DOI, which sources have it, a confidence level, and the date it was <em>first seen</em>. Rows are never deleted. A second sheet lists each PI with their ORCID, paper count, newest paper and last result.</li>
+          <li><strong>A weekly run</strong> (Mondays by default) that updates the list and commits it back to the repository, so the file's history shows what changed each week.</li>
+          <li><strong>A notice when new papers appear</strong>: a GitHub issue listing them, which GitHub emails to whoever you assign. Ordinary email over SMTP is optional.</li>
+        </ul>
+        <p>Only papers count: articles, preprints, conference papers, reviews, books, chapters, reports and theses. Datasets, software, posters and talks are left out. The first run is a baseline, so it records everything without sending a notice. A PI you add later is baselined the same way, so you aren't sent their whole back catalogue.</p>
+      </section>
+
+      <section id="copy">
+        <h2>2. Make a private copy</h2>
+        <p>Your copy should be <strong>private</strong>, because it holds your PI list. GitHub doesn't allow a <em>fork</em> of a public repository to be private, so use the template instead:</p>
+        <ol>
+          <li>Sign in to GitHub and open <a href="https://github.com/AI4RA/pub-tracker" target="_blank" rel="noopener">github.com/AI4RA/pub-tracker</a>.</li>
+          <li>Click <strong>Use this template</strong> → <strong>Create a new repository</strong>.</li>
+          <li>Choose the owner (your institution's GitHub organization, or your own account), give it a name such as <code>pub-tracker-isu</code>, and select <strong>Private</strong>.</li>
+          <li>Click <strong>Create repository</strong>.</li>
+        </ol>
+        <p class="note">Your copy gets the tracker, the website code, and both workflows. The website's deploy workflow skips itself in a private repository, so you don't need GitHub Pages; your team can keep using the public site for one-off lookups.</p>
+      </section>
+
+      <section id="list">
+        <h2>3. Add your PI list</h2>
+        <ol>
+          <li>Make a spreadsheet with one row per PI. You need a name column (<em>Last, First</em>, <em>First Last</em>, or separate first and last name columns). An <strong>Institution</strong> column and <strong>ORCID</strong> iDs make matching much more reliable for common names. <a href="https://github.com/AI4RA/pub-tracker/blob/main/data/pis.example.csv" target="_blank" rel="noopener"><code>data/pis.example.csv</code></a> shows the shape.</li>
+          <li>Save it as <code>pis.xlsx</code> (or <code>pis.csv</code>).</li>
+          <li>In your repository, open the <code>data</code> folder, click <strong>Add file</strong> → <strong>Upload files</strong>, drop the file in, and click <strong>Commit changes</strong>.</li>
+        </ol>
+        <p>To change the list later, upload a new <code>pis.xlsx</code> the same way. It replaces the old one.</p>
+        <p class="note">If every PI is at one institution, you can leave the Institution column out and set the <code>DEFAULT_INSTITUTION</code> variable instead (next step).</p>
+      </section>
+
+      <section id="keys">
+        <h2>4. Add API keys as secrets</h2>
+        <p>Keys go in <strong>repository secrets</strong>, never in a file in the repository. Secrets are encrypted, hidden in logs, and passed only to the workflow. In your repository go to <strong>Settings</strong> → <strong>Secrets and variables</strong> → <strong>Actions</strong>.</p>
+        <p>On the <strong>Secrets</strong> tab, click <strong>New repository secret</strong> for each key you have:</p>
+        <table class="doc-table">
+          <thead><tr><th>Secret name</th><th>What it is</th><th>Needed?</th></tr></thead>
+          <tbody>
+            <tr><td><code>OPENALEX_API_KEY</code></td><td>Free key from <a href="https://openalex.org/signup" target="_blank" rel="noopener">openalex.org</a> (make an account, verify your email, copy the key from Settings → API key).</td><td><strong>Strongly recommended.</strong> Without it, GitHub's runners share OpenAlex's small keyless budget with everyone else on GitHub's network, so runs will often find OpenAlex already exhausted.</td></tr>
+            <tr><td><code>S2_API_KEY</code></td><td>Semantic Scholar key, requested on <a href="https://www.semanticscholar.org/product/api#api-key-form" target="_blank" rel="noopener">their API form</a>. Approval can take weeks.</td><td>Recommended. Without it, Semantic Scholar is often throttled; the run carries on with the other sources.</td></tr>
+            <tr><td><code>NCBI_API_KEY</code></td><td>Instant, from your <a href="https://account.ncbi.nlm.nih.gov/settings/" target="_blank" rel="noopener">NCBI account settings</a> → API Key Management.</td><td>Optional. Raises PubMed from 3 to 10 requests a second.</td></tr>
+          </tbody>
+        </table>
+        <p>On the <strong>Variables</strong> tab (these aren't secret), you can set:</p>
+        <table class="doc-table">
+          <thead><tr><th>Variable name</th><th>Example</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td><code>NOTIFY_GITHUB_USERS</code></td><td><code>swright,nate-layman</code></td><td>GitHub usernames to assign the "new papers" issue to. GitHub emails them. They need access to the repository.</td></tr>
+            <tr><td><code>DEFAULT_INSTITUTION</code></td><td><code>Idaho State University</code></td><td>Used for any PI whose row has no institution.</td></tr>
+            <tr><td><code>CONTACT_EMAIL</code></td><td><code>research-office@isu.edu</code></td><td>Sent to OpenAlex and PubMed as the contact they ask heavy users for.</td></tr>
+            <tr><td><code>SOURCES</code></td><td><code>openalex,pubmed,orcid</code></td><td>Which sources to use (default: all four, <code>openalex,s2,pubmed,orcid</code>).</td></tr>
+            <tr><td><code>NOTIFY_MAX_AGE_DAYS</code></td><td><code>365</code></td><td>Only papers published in this many days are announced. Older papers that a database indexes late are still added to the list, but without a notice. Default 365.</td></tr>
+          </tbody>
+        </table>
+        <p class="note">Why not a <code>.env</code> file? A file in the repository is readable by anyone with access to it, ends up in its history, and is easy to leak. A <code>.env</code> file is only for running the tracker on your own computer (see <a href="#local">below</a>), and it is already excluded from Git by <code>.gitignore</code>.</p>
+      </section>
+
+      <section id="notify">
+        <h2>5. Choose who hears about new papers</h2>
+        <h3>Option A: a GitHub issue (default, no mail setup)</h3>
+        <p>When a run finds new papers, it opens an issue titled, for example, <em>"3 new papers (2026-11-16)"</em>, listing each paper by PI with a link, journal, date and the sources that found it. Set <code>NOTIFY_GITHUB_USERS</code> and GitHub emails the assignees, as long as their notification settings send email for assignments (the default). Anyone <strong>watching</strong> the repository gets it too. Close the issue once you've looked.</p>
+        <p>This needs nothing from your IT office: no mail server, no app password.</p>
+
+        <h3>Option B: ordinary email over SMTP (optional)</h3>
+        <p>To send a regular email as well, add these <strong>secrets</strong>. The email step does nothing until <code>SMTP_HOST</code> and <code>NOTIFY_EMAIL</code> are both set.</p>
+        <table class="doc-table">
+          <thead><tr><th>Secret</th><th>Example</th></tr></thead>
+          <tbody>
+            <tr><td><code>SMTP_HOST</code> / <code>SMTP_PORT</code></td><td><code>smtp.gmail.com</code> / <code>587</code></td></tr>
+            <tr><td><code>SMTP_USER</code> / <code>SMTP_PASSWORD</code></td><td>The sending account and its password (for Gmail, an <em>app password</em>)</td></tr>
+            <tr><td><code>SMTP_FROM</code></td><td><code>Pub Tracker &lt;tracker@example.org&gt;</code> (defaults to <code>SMTP_USER</code>)</td></tr>
+            <tr><td><code>NOTIFY_EMAIL</code></td><td>Who to send to; separate several with commas</td></tr>
+          </tbody>
+        </table>
+        <p class="note">Many university Microsoft 365 tenants turn off password-based SMTP sending. If yours does, either use Option A, ask IT for an SMTP relay or service account, or use a mail service with SMTP access (Gmail with an app password, SendGrid, Mailgun and others).</p>
+      </section>
+
+      <section id="run">
+        <h2>6. Run it the first time</h2>
+        <ol>
+          <li>Open the <strong>Actions</strong> tab of your repository. If GitHub asks, click <strong>I understand my workflows, go ahead and enable them</strong>.</li>
+          <li>Choose <strong>Track PI papers</strong> on the left, then <strong>Run workflow</strong> → <strong>Run workflow</strong>.</li>
+          <li>Click into the run to watch the log. Each PI gets a line such as <code>[12/80] Wright, Stephen: 37 papers, 37 new (baseline)</code>. A run of 100 PIs usually takes 5 to 15 minutes.</li>
+          <li>When it finishes, <code>data/papers.xlsx</code> appears in the repository. Click it and choose <strong>Download raw file</strong> to open it in Excel.</li>
+        </ol>
+        <p>The first run is the baseline: it fills the list and sends no notice. From then on, each scheduled run reports only papers that weren't there before.</p>
+      </section>
+
+      <section id="schedule">
+        <h2>7. Change the schedule</h2>
+        <p>The schedule is the <code>cron</code> line in <code>.github/workflows/track.yml</code>. Edit it on GitHub (pencil icon) and commit. Times are in UTC.</p>
+        <table class="doc-table">
+          <thead><tr><th>cron</th><th>Runs</th></tr></thead>
+          <tbody>
+            <tr><td><code>0 13 * * 1</code></td><td>Mondays at 13:00 UTC (the default)</td></tr>
+            <tr><td><code>0 13 * * *</code></td><td>Every day at 13:00 UTC</td></tr>
+            <tr><td><code>0 13 1 * *</code></td><td>The 1st of every month</td></tr>
+          </tbody>
+        </table>
+        <p>You can always run it by hand from the Actions tab too.</p>
+      </section>
+
+      <section id="costs">
+        <h2>8. Limits and costs</h2>
+        <ul>
+          <li><strong>GitHub Actions.</strong> Private repositories get a monthly allowance of free minutes (2,000 on GitHub Free, 3,000 on Team). A weekly run of 100 to 200 PIs uses roughly 40 minutes a month.</li>
+          <li><strong>OpenAlex.</strong> With a free key you have $1 of usage a day. Each PI costs about a tenth of a cent, so roughly 800 PIs a run.</li>
+          <li><strong>Semantic Scholar.</strong> About one request a second. Without a key it is the source most likely to be switched off mid-run when busy.</li>
+          <li>If a source hits its limit, the run <strong>switches that source off for the rest of the run</strong> and carries on with the others. The PIs sheet records it, and the next run fills in anything missed. No papers are ever removed because a source was unavailable.</li>
+        </ul>
+      </section>
+
+      <section id="privacy">
+        <h2>9. Where the data goes</h2>
+        <ul>
+          <li>Your PI list and results live in <strong>your private repository</strong> on GitHub, under your organization's account.</li>
+          <li>Runs happen on <strong>GitHub's servers</strong> (Actions runners), which send each PI's name, institution and ORCID iD to the public databases you enable, the same as the website does from a browser.</li>
+          <li>Nothing goes to AI4RA, the University of Idaho, Idaho State University, or anyone else. Your copy has no connection back to the original repository.</li>
+          <li>API keys are stored as encrypted GitHub secrets and are sent only to the service that issued each one.</li>
+        </ul>
+      </section>
+
+      <section id="updates">
+        <h2>10. Getting updates</h2>
+        <p>A copy made from a template doesn't follow the original automatically. To pull in later fixes, from a clone of your copy:</p>
+<pre><code>git remote add upstream https://github.com/AI4RA/pub-tracker.git
+git fetch upstream
+git merge upstream/main --allow-unrelated-histories   # first time only needs the flag
+git push</code></pre>
+        <p>Your <code>data/</code> files aren't in the original, so they won't conflict.</p>
+      </section>
+
+      <section id="local">
+        <h2>11. Running it on your own computer</h2>
+        <p>You can also run the tracker without GitHub Actions. You need <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> 22 or newer.</p>
+<pre><code>git clone https://github.com/YOUR-ORG/pub-tracker-isu.git
+cd pub-tracker-isu
+npm ci --prefix tracker
+cp data/pis.example.csv data/pis.csv     # or put your own data/pis.xlsx here
+node --env-file=.env tracker/track.mjs   # updates data/papers.xlsx</code></pre>
+        <p>Put your keys in a file named <code>.env</code> in the repository folder. It is excluded from Git, so it never gets committed:</p>
+<pre><code>OPENALEX_API_KEY=...
+S2_API_KEY=...
+NCBI_API_KEY=...
+CONTACT_EMAIL=you@example.org
+DEFAULT_INSTITUTION=Idaho State University</code></pre>
+        <p>Leave out <code>--env-file=.env</code> if you have no <code>.env</code> file. New papers are written to <code>data/new-papers.md</code>.</p>
+      </section>
+
+      <section id="trouble">
+        <h2>12. Troubleshooting</h2>
+        <dl>
+          <dt>The workflow doesn't run on schedule.</dt>
+          <dd>Check that Actions is enabled (Settings → Actions → General) and that the workflow file is on the default branch. Scheduled runs can start a few minutes late when GitHub is busy.</dd>
+          <dt>"Permission denied" or 403 when saving the list.</dt>
+          <dd>Your organization may limit what workflows can do. In Settings → Actions → General → Workflow permissions, choose <strong>Read and write permissions</strong>, or ask an organization owner to allow it.</dd>
+          <dt>No issue was opened.</dt>
+          <dd>Issues must be enabled (Settings → General → Features → Issues), and each name in <code>NOTIFY_GITHUB_USERS</code> must have access to the repository. A run that finds nothing new doesn't open an issue.</dd>
+          <dt>A source shows "skipped" or "limit reached" on the PIs sheet.</dt>
+          <dd>That source ran out of quota partway through. Add its key as a secret, or run less often. The next run catches up.</dd>
+          <dt>A paper is attributed to the wrong person.</dt>
+          <dd>Common names are the hard case. Add the PI's ORCID iD to <code>pis.xlsx</code>; that gives an exact match in ORCID, OpenAlex and Semantic Scholar. Rows marked Low confidence are worth checking.</dd>
+        </dl>
+      </section>
+      <section id="yours">
+        <h2>13. Make it your own, with credit</h2>
+        <p>You're welcome to use the template, rename it, restyle it, change how it matches people, add sources, and run it for your institution. That's what it's for. Pub Tracker is open source under the <a href="https://github.com/AI4RA/pub-tracker/blob/main/LICENSE" target="_blank" rel="noopener">Apache License 2.0</a>, and all we ask in return is <strong>attribution</strong>:</p>
+        <ul>
+          <li>Keep the <a href="https://github.com/AI4RA/pub-tracker/blob/main/NOTICE" target="_blank" rel="noopener"><code>NOTICE</code></a> and <code>LICENSE</code> files in your copy. The license requires this whenever you share the code or something built from it.</li>
+          <li>If you publish a site, a report or a tool built on it, include a line such as: <em>"Based on Pub Tracker by Nathan Layman (University of Idaho) and Stephen Wright (Idaho State University), an AI4RA project supported by NSF award 2427549."</em></li>
+          <li>To cite it in a paper or report, use <a href="https://github.com/AI4RA/pub-tracker/blob/main/CITATION.cff" target="_blank" rel="noopener"><code>CITATION.cff</code></a> (GitHub's <strong>Cite this repository</strong> button formats it for you).</li>
+        </ul>
+        <p>Improvements are welcome back as pull requests to <a href="https://github.com/AI4RA/pub-tracker" target="_blank" rel="noopener">AI4RA/pub-tracker</a>. Please don't include your PI list or results in one.</p>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>
+        <a href="https://github.com/AI4RA/pub-tracker" target="_blank" rel="noopener">Open source on GitHub</a>
+        under the <a href="https://github.com/AI4RA/pub-tracker/blob/main/LICENSE" target="_blank" rel="noopener">Apache License 2.0</a>.
+        Copyright 2026 Nathan Layman, University of Idaho, and Stephen Wright, Idaho State University. A project of AI4RA, supported by NSF award 2427549;
+        see the <a href="https://github.com/AI4RA/pub-tracker/blob/main/NOTICE" target="_blank" rel="noopener">NOTICE</a> file for full attribution.
+      </p>
+    </footer>
+  </body>
+</html>
