@@ -4,23 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f1b300" />
-    <title>Run Pub Tracker Yourself</title>
-    <meta name="description" content="Set up your own private, scheduled Pub Tracker: a running spreadsheet of every paper by your institution's PIs, updated weekly by GitHub Actions, with a notice when new papers appear." />
+    <title>Deploy Pub Tracker</title>
+    <meta name="description" content="Deploy your own private Pub Tracker to keep a complete, self-updating record of every paper your institution's PIs publish, checked weekly by GitHub Actions, with a notice when new papers appear." />
     <link rel="stylesheet" href="css/styles.css" />
   </head>
   <body>
     <header class="app-header">
       <a href="index.html" class="app-title-link"><h1><span>Pub</span> Tracker</h1></a>
-      <span class="app-subtitle">Run it yourself</span>
+      <span class="app-subtitle">Track your institution's publications</span>
       <div class="app-header-actions">
-        <a href="index.html" class="about-btn">Back to the tracker</a>
+        <a href="index.html" class="about-btn">Back to the demo</a>
         <a href="https://github.com/AI4RA/pub-tracker" target="_blank" rel="noopener" class="about-btn">GitHub</a>
       </div>
     </header>
 
     <main class="app-body doc">
-      <h1>Run Pub Tracker at your institution</h1>
-      <p class="lede">The website finds each PI's <em>most recent</em> paper when you upload a list. If you want to <strong>track every paper</strong> over time, you can run your own private copy that does it on a schedule. GitHub Actions checks every PI each week, keeps a running spreadsheet with one row per PI and paper, and tells you when new papers appear.</p>
+      <h1>Track your institution's publications</h1>
+      <p class="lede">The <a href="index.html">demo</a> finds each PI's most recent paper. Deployed, Pub Tracker does what a research office actually needs: it keeps a <strong>complete, self-updating record of every paper your PIs publish</strong>. You run it in a private copy of this repository. Each week GitHub Actions gathers every PI's papers from OpenAlex, Semantic Scholar, PubMed and ORCID. Each paper is recorded once, however many sources and versions describe it. Anything new is added to a spreadsheet your office can review, and you get a notice.</p>
       <p>You're welcome to take the template and make it your own. We just ask that you <a href="#yours">keep the attribution</a>.</p>
 
       <nav class="toc" aria-label="On this page">
@@ -32,6 +32,7 @@
           <li><a href="#keys">Add API keys as secrets</a></li>
           <li><a href="#notify">Choose who hears about new papers</a></li>
           <li><a href="#run">Run it the first time</a></li>
+          <li><a href="#review">Review duplicates and remove papers</a></li>
           <li><a href="#schedule">Change the schedule</a></li>
           <li><a href="#costs">Limits and costs</a></li>
           <li><a href="#privacy">Where the data goes</a></li>
@@ -46,9 +47,17 @@
         <h2>1. What you get</h2>
         <ul>
           <li><strong><code>data/pis.xlsx</code></strong>: your PI list, kept in the repository so it is always there for the next run. Edit it whenever people join or leave.</li>
-          <li><strong><code>data/papers.xlsx</code></strong>: a running list with <strong>one row per PI + paper</strong>, covering every paper found in OpenAlex, Semantic Scholar, PubMed and ORCID. Each row has a linked title, date, journal, DOI, which sources have it, a confidence level, and the date it was <em>first seen</em>. Rows are never deleted. A second sheet lists each PI with their ORCID, paper count, newest paper and last result.</li>
-          <li><strong>A weekly run</strong> (Mondays by default) that updates the list and commits it back to the repository, so the file's history shows what changed each week.</li>
-          <li><strong>A notice when new papers appear</strong>: a GitHub issue listing them, which GitHub emails to whoever you assign. Ordinary email over SMTP is optional.</li>
+          <li><strong><code>data/tracker.db</code></strong>: a SQLite database, the permanent record. It holds every paper, each with a stable <strong>Paper ID</strong> of its own, and a ledger of every identifier ever seen for it: each source's own ID (OpenAlex, PubMed, ORCID, Semantic Scholar), its DOIs and its title. A paper is recognised by any of these, so <strong>papers without a DOI are tracked too</strong>, and a paper is never added twice, however late a source indexes it. The database also remembers your review decisions and logs every run.</li>
+          <li><strong><code>data/papers.xlsx</code></strong>: rebuilt from the database each run, for your office to read and review. It has four sheets:
+            <ul>
+              <li><strong>Papers:</strong> one row per PI + paper, with a linked title, date, journal, DOI, other versions (such as the preprint of a published article), which sources have it, a confidence level, and the date it was first seen.</li>
+              <li><strong>Possible duplicates:</strong> pairs that might be the same paper, for you to decide.</li>
+              <li><strong>PIs:</strong> each PI's ORCID, paper count, newest paper and last result.</li>
+              <li><strong>About:</strong> how to review, and what the columns mean.</li>
+            </ul>
+          </li>
+          <li><strong>A weekly run</strong> (Mondays by default) that updates both files and commits them back, so the repository history shows what changed each week.</li>
+          <li><strong>A notice</strong> of new papers, and of tracked preprints that have now been published: a GitHub issue that GitHub emails to whoever you assign. Ordinary email over SMTP is optional.</li>
         </ul>
         <p>Only papers count: articles, preprints, conference papers, reviews, books, chapters, reports and theses. Datasets, software, posters and talks are left out. The first run is a baseline, so it records everything without sending a notice. A PI you add later is baselined the same way, so you aren't sent their whole back catalogue.</p>
       </section>
@@ -127,14 +136,29 @@
         <ol>
           <li>Open the <strong>Actions</strong> tab of your repository. If GitHub asks, click <strong>I understand my workflows, go ahead and enable them</strong>.</li>
           <li>Choose <strong>Track PI papers</strong> on the left, then <strong>Run workflow</strong> → <strong>Run workflow</strong>.</li>
-          <li>Click into the run to watch the log. Each PI gets a line such as <code>[12/80] Wright, Stephen: 37 papers, 37 new (baseline)</code>. A run of 100 PIs usually takes 5 to 15 minutes.</li>
-          <li>When it finishes, <code>data/papers.xlsx</code> appears in the repository. Click it and choose <strong>Download raw file</strong> to open it in Excel.</li>
+          <li>Click into the run to watch the log. Each PI gets a line such as <code>[12/80] Wright, Stephen: 64 records  orcid:found openalex:found pubmed:found s2:none</code>. A run of 100 PIs usually takes 5 to 15 minutes.</li>
+          <li>When it finishes, <code>data/tracker.db</code> and <code>data/papers.xlsx</code> appear in the repository. Click <code>papers.xlsx</code> and choose <strong>Download raw file</strong> to open it in Excel.</li>
         </ol>
-        <p>The first run is the baseline: it fills the list and sends no notice. From then on, each scheduled run reports only papers that weren't there before.</p>
+        <p>The first run is the baseline: it fills the list and sends no notice. That's the moment to <a href="#review">review it</a>. From then on, each scheduled run reports only papers that weren't there before.</p>
+      </section>
+
+      <section id="review">
+        <h2>7. Review duplicates and remove papers</h2>
+        <p>Pub Tracker decides on its own when records are clearly the same paper: the same DOI, or the same title within a year (which is how a preprint and its published version are linked). When it isn't sure, for example near-identical titles or the same title several years apart, it doesn't guess. It lists the pair under <strong>Possible duplicates</strong> for you. Expect most of this review after the first run; after that it's occasional.</p>
+        <p>To review, download the latest <code>data/papers.xlsx</code>, make your changes, and upload it back to <code>data/</code> (Add file → Upload files, replacing the old one). Changes apply on the next run.</p>
+        <table class="doc-table">
+          <thead><tr><th>To…</th><th>Do this in papers.xlsx</th></tr></thead>
+          <tbody>
+            <tr><td>Merge two papers</td><td>Under <strong>Possible duplicates</strong>, write <code>same</code> in the Decision column. Paper B is merged into Paper A, and its DOI is kept under Other versions. Or, on the Papers sheet, give both rows the same Paper ID.</td></tr>
+            <tr><td>Keep two papers apart</td><td>Write <code>different</code> in the Decision column. The pair won't be flagged again.</td></tr>
+            <tr><td>Remove a paper</td><td>Delete its row on the Papers sheet. It's remembered as ignored, so it never comes back, even if a source keeps listing it (for example, a namesake's paper).</td></tr>
+          </tbody>
+        </table>
+        <p class="note">Only edit the <strong>latest</strong> papers.xlsx. Each export carries an Export ID (on its About sheet). If you upload an older copy after a newer run, Pub Tracker won't apply its row deletions, so papers found in between can't be lost by mistake. Decisions on possible duplicates are still applied. Every version is in the repository history if you need to undo something.</p>
       </section>
 
       <section id="schedule">
-        <h2>7. Change the schedule</h2>
+        <h2>8. Change the schedule</h2>
         <p>The schedule is the <code>cron</code> line in <code>.github/workflows/track.yml</code>. Edit it on GitHub (pencil icon) and commit. Times are in UTC.</p>
         <table class="doc-table">
           <thead><tr><th>cron</th><th>Runs</th></tr></thead>
@@ -148,7 +172,7 @@
       </section>
 
       <section id="costs">
-        <h2>8. Limits and costs</h2>
+        <h2>9. Limits and costs</h2>
         <ul>
           <li><strong>GitHub Actions.</strong> Private repositories get a monthly allowance of free minutes (2,000 on GitHub Free, 3,000 on Team). A weekly run of 100 to 200 PIs uses roughly 40 minutes a month.</li>
           <li><strong>OpenAlex.</strong> With a free key you have $1 of usage a day. Each PI costs about a tenth of a cent, so roughly 800 PIs a run.</li>
@@ -158,9 +182,9 @@
       </section>
 
       <section id="privacy">
-        <h2>9. Where the data goes</h2>
+        <h2>10. Where the data goes</h2>
         <ul>
-          <li>Your PI list and results live in <strong>your private repository</strong> on GitHub, under your organization's account.</li>
+          <li>Your PI list, the database and the spreadsheet live in <strong>your private repository</strong> on GitHub, under your organization's account.</li>
           <li>Runs happen on <strong>GitHub's servers</strong> (Actions runners), which send each PI's name, institution and ORCID iD to the public databases you enable, the same as the website does from a browser.</li>
           <li>Nothing goes to AI4RA, the University of Idaho, Idaho State University, or anyone else. Your copy has no connection back to the original repository.</li>
           <li>API keys are stored as encrypted GitHub secrets and are sent only to the service that issued each one.</li>
@@ -168,7 +192,7 @@
       </section>
 
       <section id="updates">
-        <h2>10. Getting updates</h2>
+        <h2>11. Getting updates</h2>
         <p>A copy made from a template doesn't follow the original automatically. To pull in later fixes, from a clone of your copy:</p>
 <pre><code>git remote add upstream https://github.com/AI4RA/pub-tracker.git
 git fetch upstream
@@ -178,24 +202,24 @@ git push</code></pre>
       </section>
 
       <section id="local">
-        <h2>11. Running it on your own computer</h2>
-        <p>You can also run the tracker without GitHub Actions. You need <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> 22 or newer.</p>
+        <h2>12. Running it on your own computer</h2>
+        <p>You can also run the tracker without GitHub Actions. You need <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> 22.13 or newer (24 recommended), which includes SQLite.</p>
 <pre><code>git clone https://github.com/YOUR-ORG/pub-tracker-isu.git
 cd pub-tracker-isu
 npm ci --prefix tracker
 cp data/pis.example.csv data/pis.csv     # or put your own data/pis.xlsx here
-node --env-file=.env tracker/track.mjs   # updates data/papers.xlsx</code></pre>
+node --env-file=.env tracker/track.mjs   # updates data/tracker.db and data/papers.xlsx</code></pre>
         <p>Put your keys in a file named <code>.env</code> in the repository folder. It is excluded from Git, so it never gets committed:</p>
 <pre><code>OPENALEX_API_KEY=...
 S2_API_KEY=...
 NCBI_API_KEY=...
 CONTACT_EMAIL=you@example.org
 DEFAULT_INSTITUTION=Idaho State University</code></pre>
-        <p>Leave out <code>--env-file=.env</code> if you have no <code>.env</code> file. New papers are written to <code>data/new-papers.md</code>.</p>
+        <p>Leave out <code>--env-file=.env</code> if you have no <code>.env</code> file. New papers are written to <code>data/new-papers.md</code>. To look inside the database, any SQLite tool works, such as <a href="https://sqlitebrowser.org" target="_blank" rel="noopener">DB Browser for SQLite</a>; the tables are <code>papers</code>, <code>ledger</code>, <code>kept_apart</code>, <code>pis</code> and <code>runs</code>.</p>
       </section>
 
       <section id="trouble">
-        <h2>12. Troubleshooting</h2>
+        <h2>13. Troubleshooting</h2>
         <dl>
           <dt>The workflow doesn't run on schedule.</dt>
           <dd>Check that Actions is enabled (Settings → Actions → General) and that the workflow file is on the default branch. Scheduled runs can start a few minutes late when GitHub is busy.</dd>
@@ -205,12 +229,14 @@ DEFAULT_INSTITUTION=Idaho State University</code></pre>
           <dd>Issues must be enabled (Settings → General → Features → Issues), and each name in <code>NOTIFY_GITHUB_USERS</code> must have access to the repository. A run that finds nothing new doesn't open an issue.</dd>
           <dt>A source shows "skipped" or "limit reached" on the PIs sheet.</dt>
           <dd>That source ran out of quota partway through. Add its key as a secret, or run less often. The next run catches up.</dd>
+          <dt>My edits to papers.xlsx weren't applied.</dt>
+          <dd>The run log says so when the uploaded file isn't the latest export. Download the current papers.xlsx, redo the edits, and upload it again.</dd>
           <dt>A paper is attributed to the wrong person.</dt>
-          <dd>Common names are the hard case. Add the PI's ORCID iD to <code>pis.xlsx</code>; that gives an exact match in ORCID, OpenAlex and Semantic Scholar. Rows marked Low confidence are worth checking.</dd>
+          <dd>Common names are the hard case. Add the PI's ORCID iD to <code>pis.xlsx</code>; that gives an exact match in ORCID, OpenAlex and Semantic Scholar. Rows marked Low confidence are worth checking, and you can delete any that aren't theirs.</dd>
         </dl>
       </section>
       <section id="yours">
-        <h2>13. Make it your own, with credit</h2>
+        <h2>14. Make it your own, with credit</h2>
         <p>You're welcome to use the template, rename it, restyle it, change how it matches people, add sources, and run it for your institution. That's what it's for. Pub Tracker is open source under the <a href="https://github.com/AI4RA/pub-tracker/blob/main/LICENSE" target="_blank" rel="noopener">Apache License 2.0</a>, and all we ask in return is <strong>attribution</strong>:</p>
         <ul>
           <li>Keep the <a href="https://github.com/AI4RA/pub-tracker/blob/main/NOTICE" target="_blank" rel="noopener"><code>NOTICE</code></a> and <code>LICENSE</code> files in your copy. The license requires this whenever you share the code or something built from it.</li>

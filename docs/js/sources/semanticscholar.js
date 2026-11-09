@@ -54,7 +54,7 @@ export async function papers(pi, ctx, { all = false } = {}) {
   const body2 = await getJSON(`${BASE}/author/${best.a.authorId}/papers?${pq}`, { limiter, signal, headers });
   const list = (body2.data || []).filter(isPaper).map(p => {
     const doi = normalizeDoi(p.externalIds?.DOI);
-    return { title: p.title || '', date: normDate(p.publicationDate || p.year), venue: p.venue || '', doi, url: doi ? `https://doi.org/${doi}` : p.url };
+    return { sid: p.paperId || '', title: p.title || '', date: normDate(p.publicationDate || p.year), venue: p.venue || '', doi, url: doi ? `https://doi.org/${doi}` : p.url };
   });
   return { status: 'found', authorName: best.a.name, authorUrl: best.a.url, note, papers: list };
 }

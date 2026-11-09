@@ -7,7 +7,8 @@ import * as s2 from './sources/semanticscholar.js';
 import * as pubmed from './sources/pubmed.js';
 import * as orcid from './sources/orcid.js';
 import * as scholar from './sources/scholar.js';
-import { dateKey, titleKey } from './match.js';
+import { dateKey } from './match.js';
+import { samePaper } from './linkage.js';
 
 export const SOURCES = [openalex, s2, pubmed, orcid, scholar];
 
@@ -61,8 +62,6 @@ async function runSources(pi, { enabled, keys, signal, paused = new Map(), all }
   return { pi: hinted, results };
 }
 
-const samePaper = (a, b) => (a.doi && b.doi && a.doi === b.doi) || (titleKey(a.title) && titleKey(a.title) === titleKey(b.title));
-
 // ── The website: each PI's most recent paper ──
 export async function lookupPI(pi, opts) {
   const { pi: hinted, results } = await runSources(pi, { ...opts, all: false });
@@ -101,30 +100,18 @@ function confidence(pi, note, agreeing) {
   return 'Low';
 }
 
-// ── The tracker: every paper, merged across sources ──
-// Returns { pi, results, papers } where each paper lists the sources that
-// have it and a confidence like the website's.
+// ── The tracker: every record from every source ──
+// Returns { pi, results, records }: one record per source per paper, each
+// tagged with its source, that source's own id (sid) and how the PI was
+// matched there. Deciding which records are the same paper, and which are
+// already known, is the tracker's job (tracker/core.mjs).
 export async function collectPapers(pi, opts) {
   const { pi: hinted, results } = await runSources(pi, { ...opts, all: true });
-  const merged = [];
+  const records = [];
   for (const s of SOURCES) {
     const r = results[s.id];
     if (r?.status !== 'found' || !r.papers) continue;
-    for (const p of r.papers) {
-      const hit = merged.find(m => samePaper(m, p));
-      if (hit) {
-        if (!hit.sources.includes(s.label)) { hit.sources.push(s.label); hit.notes.push(r.note); }
-        if (!hit.doi && p.doi) { hit.doi = p.doi; hit.url = `https://doi.org/${p.doi}`; }
-        if (!hit.venue && p.venue) hit.venue = p.venue;
-        // Prefer the most precise date ("2023-09-22" over "2023-09") within the same year.
-        if (p.date.length > hit.date.length && p.date.slice(0, 4) === hit.date.slice(0, 4)) hit.date = p.date;
-      } else {
-        merged.push({ ...p, sources: [s.label], notes: [r.note] });
-      }
-    }
+    for (const p of r.papers) records.push({ ...p, source: s.id, sourceLabel: s.label, matchNote: r.note });
   }
-  const papers = merged
-    .map(({ notes, ...p }) => ({ ...p, confidence: confidence(pi, notes.find(n => /ORCID|institution|affiliation/.test(n)) || notes[0], p.sources.length) }))
-    .sort((a, b) => dateKey(b.date).localeCompare(dateKey(a.date)));
-  return { pi: hinted, results, papers };
+  return { pi: hinted, results, records };
 }

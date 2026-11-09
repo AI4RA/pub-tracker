@@ -4,9 +4,9 @@
   "description": "Scheduled Pub Tracker: keeps a running list of every paper for each PI and reports new ones.",
   "type": "module",
   "license": "Apache-2.0",
-  "engines": { "node": ">=22" },
+  "engines": { "node": ">=22.13" },
   "scripts": {
-    "track": "node track.mjs",
+    "track": "node --disable-warning=ExperimentalWarning track.mjs",
     "notify-email": "node notify-email.mjs"
   },
   "dependencies": {

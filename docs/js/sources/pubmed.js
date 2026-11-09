@@ -65,6 +65,7 @@ export async function papers(pi, ctx, { all = false } = {}) {
       const r = sum.result?.[id];
       if (!r) continue;
       list.push({
+        sid: String(r.uid),
         title: (r.title || '').replace(/\.$/, ''),
         date: normDate(r.sortpubdate?.replace(/\//g, '-') || r.pubdate),
         venue: r.fulljournalname || r.source || '',

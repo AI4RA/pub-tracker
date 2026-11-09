@@ -13,8 +13,13 @@ Everything runs in the browser on GitHub Pages. The browser calls each upstream 
 
 ## Two ways to run
 
-- **The public site** (`docs/`, GitHub Pages from AI4RA/pub-tracker): a demo for one-off "most recent paper" lookups, plus the deploy guide (`docs/deploy.html`). Everything in the browser.
-- **A private copy made from the template**: `tracker/track.mjs`, run weekly by `.github/workflows/track.yml`, keeps `data/papers.xlsx` (one row per PI + paper, never deleted, with "First seen") from `data/pis.xlsx`, and reports new papers via a GitHub issue (default) and optional SMTP (`tracker/notify-email.mjs`). It imports the same `docs/js` modules, so keep those runnable in Node (no DOM at import time; `docs/js/package.json` marks them as ESM). The tracking workflow is guarded with `if: github.repository != 'AI4RA/pub-tracker'`, and the Pages job skips private repos. Never commit a real PI list or `papers.xlsx` here.
+- **The public site** (`docs/`, GitHub Pages from AI4RA/pub-tracker): explicitly a **demo** of one-off "most recent paper" lookups, with a banner pointing to the deploy guide (`docs/deploy.html`). Everything in the browser.
+- **A private copy made from the template** (the deployed version; the goal is tracking an institution's whole body of papers): `.github/workflows/track.yml` runs `tracker/track.mjs` weekly.
+  - `tracker/store.mjs`: SQLite via built-in `node:sqlite` (`data/tracker.db`), the system of record. Tables: papers, ledger, kept_apart, pis, runs, meta.
+  - `tracker/core.mjs`: pure bookkeeping, tested in `tests/core.test.mjs`. Our own **Paper ID** is the stable identifier, never the DOI (many papers have none). The ledger maps every identifier (`openalex:W…`, `pubmed:PMID`, `orcid:…/put-code`, `s2:…`, `doi:…`, `title:…`) to a Paper ID; a record is known if any key hits (a title-only hit also needs years within 1). Deleted rows become `ignored` ledger entries; "same"/"different" decisions and shared Paper IDs merge or keep apart.
+  - `docs/js/linkage.js`: the same/maybe/different rules (tested in `tests/linkage.test.mjs`). Deliberately rule-based, not probabilistic: a Fellegi-Sunter/EM model was tried and was unstable at per-PI scale.
+  - `data/papers.xlsx` is an export plus the review surface. Row edits apply only when its About "Export ID" matches `meta.last_export_id`; decisions always apply.
+  - It imports the same `docs/js` modules, so keep those runnable in Node (no DOM at import time; `docs/js/package.json` marks them ESM). The workflow is guarded with `if: github.repository != 'AI4RA/pub-tracker'`; the Pages job skips private repos. Never commit a real PI list, `tracker.db` or `papers.xlsx` here.
 - Reuse is welcome with attribution (NOTICE, LICENSE, a credit line); see the "Make it your own" sections of the README and deploy guide.
 
 ## Tech stack

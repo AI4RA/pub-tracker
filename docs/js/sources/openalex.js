@@ -100,6 +100,7 @@ export async function papers(pi, ctx, { all = false } = {}) {
     for (const w of results) {
       const doi = normalizeDoi(w.doi);
       out.push({
+        sid: String(w.id || '').split('/').pop(),
         title: w.title || '',
         date: normDate(w.publication_date || w.publication_year),
         venue: w.primary_location?.source?.display_name || '',

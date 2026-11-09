@@ -72,6 +72,29 @@ body {
 .app-footer p:last-child { margin-bottom: 0; }
 .app-footer a { color: #7a5a00; }
 
+/* ── Demo banner ── */
+.demo-banner {
+  display: flex; gap: 1rem; align-items: flex-start;
+  background: var(--card-bg);
+  border: 2px solid var(--gold);
+  border-radius: 0.75rem;
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  line-height: 1.6;
+}
+.demo-banner h2 { font-size: 1.15rem; margin: 0 0 0.4rem; }
+.demo-banner p { margin: 0 0 0.6rem; }
+.demo-banner ul { margin: 0 0 0.8rem; padding-left: 1.2rem; }
+.demo-banner li { margin: 0.2rem 0; }
+.demo-banner .btn { text-decoration: none; display: inline-block; }
+.demo-tag {
+  flex: none;
+  background: var(--gold); color: var(--ink);
+  font-weight: 800; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 0.25rem 0.6rem; border-radius: 999px;
+}
+@media (max-width: 600px) { .demo-banner { flex-direction: column; } }
+
 /* ── Steps ── */
 .intro { margin: 0 0 1.25rem; line-height: 1.6; max-width: 75ch; }
 .intro strong { color: var(--ink); }

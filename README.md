@@ -45,15 +45,16 @@ Add keys under **API Keys** on the site, or pass them in the URL (read once, the
 | **NCBI (PubMed)** | 3 requests/second, usually enough | 10 requests/second | Free, instant. Sign in at [NCBI](https://account.ncbi.nlm.nih.gov/settings/) (Google, ORCID, Login.gov or many university logins work), open Account Settings → API Key Management, click **Create an API Key**. |
 | **Contact email** | — | — | Your own address. Sent to OpenAlex and PubMed as the contact they ask heavy users for. |
 
-## Run it yourself: scheduled tracking of every paper
+## Deploy it: track your institution's publications
 
-The public site is a demo for one-off lookups. To **track every paper** by your institution's PIs over time, make a private copy from this template:
+The public site is a **demo** of one-off lookups. Deployed, Pub Tracker keeps a **complete, self-updating record of every paper your PIs publish**. Make a private copy from this template, put your PI list in `data/pis.xlsx` and your API keys in repository secrets, and the **Track PI papers** workflow (`.github/workflows/track.yml`) runs weekly on GitHub Actions:
 
-- Put your PI list in `data/pis.xlsx` and your API keys in repository secrets.
-- The **Track PI papers** workflow (`.github/workflows/track.yml`) runs weekly on GitHub Actions. It keeps `data/papers.xlsx` with one row per PI + paper, never deleting a row and recording when each paper was first seen, and commits it back.
-- When it finds new papers, it opens a GitHub issue listing them (GitHub emails the assignees, so no mail server is needed), and optionally sends an email over SMTP.
+- **Every paper, recorded once.** It gathers every PI's papers from all four sources. `data/tracker.db` (SQLite) gives each paper a stable **Paper ID** and keeps a ledger of every identifier ever seen for it (each source's own ID, its DOIs, its title), so papers without a DOI are tracked and nothing is added twice, however late a source indexes it.
+- **Clear rules for "same paper".** Same DOI, or same title within a year (which links preprints to their published versions). Anything uncertain goes to a **Possible duplicates** sheet for a person to decide once.
+- **A spreadsheet to review.** `data/papers.xlsx` is rebuilt each run. Write `same` or `different` next to a possible duplicate, or delete a row to drop a paper for good, then upload the file back; the next run applies it and the database remembers.
+- **A notice when something is new.** New papers, and tracked preprints that have been published, go in a GitHub issue (GitHub emails the assignees, so no mail server is needed). SMTP email is optional.
 
-Step-by-step setup: **[ai4ra.github.io/pub-tracker/deploy.html](https://ai4ra.github.io/pub-tracker/deploy.html)**. The tracker (`tracker/track.mjs`) reuses the website's own source modules, so both match people the same way. It also runs on your own computer: `npm ci --prefix tracker && node --env-file=.env tracker/track.mjs`. The tracking workflow never runs in this public repository.
+Step-by-step setup: **[ai4ra.github.io/pub-tracker/deploy.html](https://ai4ra.github.io/pub-tracker/deploy.html)**. The tracker (`tracker/track.mjs`, with its bookkeeping in `tracker/core.mjs` and storage in `tracker/store.mjs`) reuses the website's own source modules, so both match people the same way. It also runs on your own computer with Node 22.13+: `npm ci --prefix tracker && node --env-file=.env tracker/track.mjs`. The tracking workflow never runs in this public repository. Tests: `node --test tests/*.test.mjs`.
 
 ## Make it your own
 

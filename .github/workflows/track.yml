@@ -1,5 +1,6 @@
-# Scheduled Pub Tracker: keeps data/papers.xlsx up to date with every paper
-# for each PI in data/pis.xlsx, and notifies someone when new ones appear.
+# Scheduled Pub Tracker: tracks every paper by the PIs in data/pis.xlsx.
+# data/tracker.db (SQLite) is the record; data/papers.xlsx is rebuilt from it
+# each run for review. New and newly published papers are announced.
 #
 # It runs only in your own copy of the repository, never in AI4RA/pub-tracker
 # itself. Setup is in docs/deploy.html (https://ai4ra.github.io/pub-tracker/deploy.html).
@@ -12,7 +13,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write   # commit data/papers.xlsx back to the repo
+  contents: write   # commit data/tracker.db and data/papers.xlsx back to the repo
   issues: write     # open the "new papers" issue that GitHub emails out
 
 concurrency:
@@ -32,14 +33,14 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24   # built-in node:sqlite
 
       - name: Install
         run: npm ci --prefix tracker
 
       - name: Find papers
         id: track
-        run: node tracker/track.mjs
+        run: node --disable-warning=ExperimentalWarning tracker/track.mjs
         env:
           OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
           S2_API_KEY: ${{ secrets.S2_API_KEY }}
@@ -53,9 +54,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/papers.xlsx
+          git add data/tracker.db data/papers.xlsx
           if git diff --cached --quiet; then
-            echo "No changes to data/papers.xlsx."
+            echo "No changes."
           else
             git commit -m "Track papers: ${{ steps.track.outputs.new_count }} new ($(date -u +%F))"
             git push
@@ -67,7 +68,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           ASSIGNEES: ${{ vars.NOTIFY_GITHUB_USERS }}
         run: |
-          args=(--title "${{ steps.track.outputs.new_count }} new papers ($(date -u +%F))" --body-file "${{ steps.track.outputs.new_file }}")
+          args=(--title "Pub Tracker: ${{ steps.track.outputs.new_count }} new or newly published papers ($(date -u +%F))" --body-file "${{ steps.track.outputs.new_file }}")
           for u in ${ASSIGNEES//,/ }; do args+=(--assignee "$u"); done
           gh issue create "${args[@]}"
 

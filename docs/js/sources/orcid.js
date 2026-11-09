@@ -65,6 +65,7 @@ export async function papers(pi, ctx) {
     const pd = s['publication-date'] || {};
     const d = normDate({ year: pd.year?.value, month: pd.month?.value, day: pd.day?.value });
     return {
+      sid: `${found.orcid}/${s['put-code']}`,
       title: s.title?.title?.value || '',
       venue: s['journal-title']?.value || '',
       doi, d,
