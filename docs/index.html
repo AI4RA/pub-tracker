@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f1b300" />
+    <title>Pub Tracker</title>
+    <meta name="description" content="Upload a list of PIs and get each one's most recent paper from OpenAlex, Semantic Scholar, PubMed, and ORCID, as a downloadable spreadsheet. Runs entirely in your browser." />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <a href="index.html" class="app-title-link"><h1><span>Pub</span> Tracker</h1></a>
+      <span class="app-subtitle">Each PI's most recent paper, in one spreadsheet.</span>
+      <div class="app-header-actions">
+        <button id="privacy-btn" class="about-btn">Data privacy</button>
+        <button id="how-btn" class="about-btn">How it works</button>
+        <button id="about-btn" class="about-btn">About</button>
+        <a href="https://github.com/ui-insight/pub-tracker" target="_blank" rel="noopener" class="about-btn">GitHub</a>
+        <button id="api-key-btn" class="api-key-btn" title="Optional API keys">
+          <span class="api-key-dot" id="api-key-dot"></span>
+          API Keys
+        </button>
+      </div>
+    </header>
+
+    <main class="app-body">
+      <p class="intro">Upload a spreadsheet of principal investigators. Pub Tracker looks up each one in <strong>OpenAlex</strong>, <strong>Semantic Scholar</strong>, <strong>PubMed</strong>, and <strong>ORCID</strong>, finds their most recent paper, and gives you an Excel file with the paper, its date, journal, and a link, plus a Google Scholar link to check each PI. Your file never leaves your browser and nothing passes through our servers; only names, institutions and ORCID iDs go straight to those public databases. <button class="btn-link" id="privacy-link">Data privacy</button></p>
+
+      <section class="card" id="step-upload">
+        <h2><span class="step-num">1</span> Upload your list of PIs</h2>
+        <label class="upload-zone" id="drop-zone">
+          <input type="file" id="file-input" accept=".csv,.xlsx,.xls,.tsv,text/csv" />
+          Drag a <strong>.csv</strong> or <strong>.xlsx</strong> file here, or <span class="link">browse</span>.
+          <div class="file-name" id="file-name"></div>
+        </label>
+        <p class="hint" style="margin-top:0.6rem;">One row per PI. A name column is all you need (<em>Last, First</em> or <em>First Last</em>, or separate first and last name columns). An <strong>Institution</strong> column, or <strong>ORCID</strong> iDs, give much better matches for common names.
+          <button class="btn-link" id="template-btn">Download a template</button></p>
+      </section>
+
+      <section class="card disabled" id="step-columns">
+        <h2><span class="step-num">2</span> Check the columns</h2>
+        <div class="grid">
+          <div class="field"><label for="col-name">Full name column</label><select id="col-name"></select></div>
+          <div class="field"><label for="col-first">or first name</label><select id="col-first"></select></div>
+          <div class="field"><label for="col-last">and last name</label><select id="col-last"></select></div>
+          <div class="field"><label for="col-inst">Institution column</label><select id="col-inst"></select></div>
+          <div class="field"><label for="col-orcid">ORCID column</label><select id="col-orcid"></select></div>
+          <div class="field"><label for="default-inst">Institution for rows without one</label><input type="text" id="default-inst" placeholder="e.g. Idaho State University" /></div>
+        </div>
+        <p class="hint" id="preview" style="margin-top:0.6rem;"></p>
+      </section>
+
+      <section class="card disabled" id="step-run">
+        <h2><span class="step-num">3</span> Search</h2>
+        <div class="sources" id="sources"></div>
+        <p class="hint">Semantic Scholar's free tier allows about one request a second, so it sets the pace: about 2 seconds a PI, or roughly 3 minutes for 100. Untick it for a faster run, or add a free key under <strong>API Keys</strong>.</p>
+        <div class="actions">
+          <button class="btn primary" id="run-btn">Find recent papers</button>
+          <button class="btn secondary" id="stop-btn" hidden>Stop</button>
+          <button class="btn" id="download-btn" disabled>Download .xlsx</button>
+        </div>
+        <div id="progress-wrap" hidden>
+          <div class="progress"><div id="progress-bar"></div></div>
+          <div class="status-line" id="status-line"></div>
+        </div>
+        <div class="table-scroll" id="table-wrap" hidden>
+          <table class="results">
+            <thead><tr><th>PI</th><th>Most recent paper</th><th>Date</th><th>Journal / venue</th><th>Confidence</th><th>By source</th></tr></thead>
+            <tbody id="results-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <!-- API Keys Modal -->
+    <div id="api-key-modal" class="modal-overlay">
+      <div class="modal-dialog">
+        <h2>API keys (optional)</h2>
+        <p>Pub Tracker works without any keys. A free key of your own raises a service's limits, which helps with long lists. Each key is sent only to the service that issued it.</p>
+        <div id="key-fields"></div>
+        <p class="hint"><strong>Session only.</strong> Keys are held in this tab's session memory, never saved to disk, and cleared when you close or reload the tab. You can also pass them in the address, as <code>?openalex=…&amp;s2=…&amp;ncbi=…&amp;email=…</code>; they are read once and removed from the address bar.</p>
+        <button class="modal-close-btn" id="api-key-close">Save</button>
+      </div>
+    </div>
+
+    <!-- Data privacy Modal -->
+    <div id="privacy-modal" class="modal-overlay">
+      <div class="modal-dialog" style="max-width:640px;">
+        <h2>Data privacy</h2>
+        <p><strong>None of your data goes to our servers. We don't run any.</strong> Pub Tracker is a set of static files on GitHub Pages. Once the page has loaded, everything happens in your browser, on your computer.</p>
+
+        <h3>What stays on your computer</h3>
+        <ul>
+          <li><strong>Your uploaded file.</strong> It is read by your browser and never uploaded anywhere. Any columns other than name, institution and ORCID are never read or sent.</li>
+          <li><strong>The results.</strong> The table and the Excel file are built in your browser and saved straight to your downloads.</li>
+          <li><strong>Your API keys</strong>, if you add any. They are held in this tab's memory only and cleared when you close or reload it.</li>
+        </ul>
+
+        <h3>What is sent, and to whom</h3>
+        <p>To look up a PI, your browser contacts the public scholarly databases you tick, directly, with no stop in between:</p>
+        <ul>
+          <li><strong>OpenAlex</strong> (api.openalex.org): the PI's name, or ORCID iD. Institution matching is done in your browser.</li>
+          <li><strong>Semantic Scholar</strong> (api.semanticscholar.org): the PI's name.</li>
+          <li><strong>PubMed</strong> (eutils.ncbi.nlm.nih.gov): the PI's name and institution.</li>
+          <li><strong>ORCID</strong> (pub.orcid.org): the PI's name and institution, or ORCID iD.</li>
+          <li><strong>Google Scholar</strong>: nothing, unless you click a PI's Google Scholar link yourself.</li>
+        </ul>
+        <p>An API key or contact email you add goes only to the service it belongs to. These services see your network address, as any website you visit does, and handle requests under their own privacy policies.</p>
+
+        <h3>What is not collected</h3>
+        <ul>
+          <li>No accounts, no cookies, no analytics, no tracking.</li>
+          <li>No server of ours, so there is no log of your lists or results to keep, lose, or share.</li>
+          <li>The only outside code is the SheetJS spreadsheet library, loaded from a public CDN when the page opens.</li>
+        </ul>
+        <p class="hint">The names and institutions sent are the kind of information already public in faculty directories and published papers. Don't add other sensitive data to the upload; it is never used, so there is no need. You can check all of this yourself: the <a href="https://github.com/ui-insight/pub-tracker" target="_blank" rel="noopener">source code is public</a>, and your browser's developer tools (Network tab) show every request the page makes.</p>
+        <button class="modal-close-btn" id="privacy-close">Got it</button>
+      </div>
+    </div>
+
+    <!-- How it works Modal -->
+    <div id="how-modal" class="modal-overlay">
+      <div class="modal-dialog" style="max-width:700px;">
+        <h2>How Pub Tracker works</h2>
+        <h3>Everything runs in your browser</h3>
+        <p>Pub Tracker is a static website on GitHub Pages. There is no server of ours in the middle: your file is read in the browser, your browser calls each service directly, and the spreadsheet is built in the browser. The only things that leave your computer are each PI's name, institution and ORCID iD, sent to the services you tick, plus any API key you add, sent only to the service that issued it.</p>
+
+        <h3>Finding the right person</h3>
+        <ul>
+          <li><strong>ORCID</strong> is searched first, by name and institution. An iD tied to the institution is passed to OpenAlex and Semantic Scholar so they can match the exact person.</li>
+          <li><strong>OpenAlex</strong> and <strong>Semantic Scholar</strong> search authors by name, then rank the candidates by how well the name fits, whether their affiliation matches the institution, and how much they have published.</li>
+          <li><strong>PubMed</strong> searches the full author name together with the institution in the affiliation field.</li>
+          <li>When you give an institution, OpenAlex, ORCID and PubMed will not fall back to a namesake elsewhere: "not found" is better than the wrong person.</li>
+        </ul>
+
+        <h3>Picking the most recent paper</h3>
+        <p>Each source reports the PI's newest paper dated on or before today; forthcoming issues with future dates are skipped. The newest of those wins. Sources that report the same paper (same DOI or title) are listed as agreeing.</p>
+        <ul>
+          <li><span class="conf High">High</span> two or more sources agree, or the ORCID iD came from your file.</li>
+          <li><span class="conf Medium">Medium</span> one source, matched by ORCID or by name plus institution.</li>
+          <li><span class="conf Low">Low</span> matched by name only. Check it.</li>
+        </ul>
+
+        <h3>Google Scholar</h3>
+        <p>Google Scholar has no public API and refuses requests from other websites, and Pub Tracker sends nothing through a server of its own. So for Google Scholar, each PI gets a link to a profile search you can open with one click to check the result by hand.</p>
+
+        <h3>The spreadsheet</h3>
+        <ul>
+          <li><strong>Most recent paper</strong>: one row per PI, with the title linked to the paper, date, journal, DOI, the source that found it, the sources that agree, a confidence level, ORCID, and a Google Scholar search link.</li>
+          <li><strong>By source</strong>: what each source found for each PI and how it matched, to audit a result.</li>
+          <li><strong>About</strong>: when the file was made and how results were chosen.</li>
+        </ul>
+        <button class="modal-close-btn" id="how-close">Got it</button>
+      </div>
+    </div>
+
+    <!-- About Modal -->
+    <div id="about-modal" class="modal-overlay">
+      <div class="modal-dialog">
+        <h2>About Pub Tracker</h2>
+        <p>Pub Tracker finds the most recent publication for each PI on a list, from open scholarly databases, and returns it as a spreadsheet. It is built for research offices that need a quick, current snapshot of their investigators' publishing.</p>
+        <p>It is a partnership between <strong>Nathan Layman</strong> (University of Idaho), <strong>Stephen Wright</strong> (Idaho State University), and <a href="https://github.com/AI4RA" target="_blank" rel="noopener">AI4RA</a>.</p>
+        <h3>Data sources</h3>
+        <p><a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a> (CC0), <a href="https://www.semanticscholar.org/product/api" target="_blank" rel="noopener">Semantic Scholar</a>, <a href="https://pubmed.ncbi.nlm.nih.gov" target="_blank" rel="noopener">PubMed</a> (NCBI E-utilities), and the <a href="https://info.orcid.org/documentation/features/public-api/" target="_blank" rel="noopener">ORCID public API</a>. Each service's own terms apply to what it returns.</p>
+        <h3>Open source</h3>
+        <p><a href="https://github.com/ui-insight/pub-tracker" target="_blank" rel="noopener">View on GitHub</a>. Licensed under the <a href="https://github.com/ui-insight/pub-tracker/blob/main/LICENSE" target="_blank" rel="noopener">Apache License 2.0</a>; see the <a href="https://github.com/ui-insight/pub-tracker/blob/main/NOTICE" target="_blank" rel="noopener">NOTICE</a> file for full credits.</p>
+        <button class="modal-close-btn" id="about-close">Got it</button>
+      </div>
+    </div>
+
+    <footer class="app-footer">
+      <p>
+        <a href="https://github.com/ui-insight/pub-tracker" target="_blank" rel="noopener">Open source on GitHub</a>
+        under the <a href="https://github.com/ui-insight/pub-tracker/blob/main/LICENSE" target="_blank" rel="noopener">Apache License 2.0</a>.
+        Copyright 2026 Nathan Layman, University of Idaho, and Stephen Wright, Idaho State University. A project of AI4RA, supported by NSF award 2427549;
+        see the <a href="https://github.com/ui-insight/pub-tracker/blob/main/NOTICE" target="_blank" rel="noopener">NOTICE</a> file for full attribution.
+      </p>
+      <p>
+        Data from <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a>,
+        <a href="https://www.semanticscholar.org" target="_blank" rel="noopener">Semantic Scholar</a>,
+        <a href="https://pubmed.ncbi.nlm.nih.gov" target="_blank" rel="noopener">PubMed</a>, and
+        <a href="https://orcid.org" target="_blank" rel="noopener">ORCID</a>.
+        Spreadsheets read and written with <a href="https://github.com/SheetJS/sheetjs" target="_blank" rel="noopener">SheetJS</a> (Apache-2.0).
+      </p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

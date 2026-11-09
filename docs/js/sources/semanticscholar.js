@@ -1,0 +1,65 @@
+// Semantic Scholar: author search scored on name, affiliation and paper count,
+// then the author's papers sorted locally by publication date (the API does
+// not sort an author's papers). Upstream: https://api.semanticscholar.org.
+// No key needed; the public pool is throttled hard, so calls are spaced out.
+
+import { getJSON, Limiter } from '../http.js';
+import { nameScore, affiliationMatch, normDate, dateKey, normalizeDoi } from '../match.js';
+
+const BASE = 'https://api.semanticscholar.org/graph/v1';
+const limiter = new Limiter(1100);
+
+export const id = 's2';
+export const label = 'Semantic Scholar';
+
+export async function lookup(pi, ctx) {
+  const { keys, signal } = ctx;
+  const headers = keys.s2 ? { 'x-api-key': keys.s2 } : {};
+  limiter.setInterval(keys.s2 ? 1050 : 1100);
+
+  const q = new URLSearchParams({ query: pi.name.full, fields: 'name,affiliations,paperCount,externalIds,url', limit: '20' });
+  const body = await getJSON(`${BASE}/author/search?${q}`, { limiter, signal, headers });
+
+  const scored = (body.data || []).map(a => {
+    const ns = nameScore(pi.name, a.name);
+    const am = affiliationMatch(pi.institution, a.affiliations);
+    const orcidMatch = pi.orcid && a.externalIds?.ORCID === pi.orcid;
+    return { a, ns, am, score: (orcidMatch ? 1000 : 0) + ns * 10 + (am ? 50 : 0) + Math.log10((a.paperCount || 0) + 1) };
+  }).filter(x => x.ns >= 2);
+  scored.sort((x, y) => y.score - x.score);
+  if (!scored.length) return { status: 'none', note: 'No author with a matching name' };
+
+  const best = scored[0];
+  if (pi.institution && best.score < 1000 && !best.am && scored.length > 1) {
+    return { status: 'none', note: `${scored.length} authors share this name and none lists ${pi.institution}; not guessing`, candidates: scored.length };
+  }
+  // Semantic Scholar often has no affiliation on file, so a missing match is
+  // a weaker signal here than in OpenAlex: keep the pick but flag it.
+  let note;
+  if (best.score >= 1000) note = 'Matched by ORCID';
+  else if (best.am) note = `Matched by name + affiliation (${scored.length} name match${scored.length > 1 ? 'es' : ''})`;
+  else note = `Matched by name only (${scored.length} candidate${scored.length > 1 ? 's' : ''}); verify`;
+
+  const pq = new URLSearchParams({ fields: 'title,publicationDate,year,venue,externalIds,url', limit: '500' });
+  const papers = await getJSON(`${BASE}/author/${best.a.authorId}/papers?${pq}`, { limiter, signal, headers });
+  const today = new Date().toISOString().slice(0, 10);
+  const list = (papers.data || [])
+    .map(p => ({ p, d: normDate(p.publicationDate || p.year) }))
+    .filter(x => x.d && dateKey(x.d) <= dateKey(today))
+    .sort((x, y) => dateKey(y.d).localeCompare(dateKey(x.d)));
+  if (!list.length) return { status: 'none', note: `${note}; no dated papers`, authorName: best.a.name, authorUrl: best.a.url };
+
+  const { p, d } = list[0];
+  const doi = normalizeDoi(p.externalIds?.DOI);
+  return {
+    status: 'found',
+    authorName: best.a.name,
+    authorUrl: best.a.url,
+    title: p.title || '',
+    date: d,
+    venue: p.venue || '',
+    doi,
+    url: doi ? `https://doi.org/${doi}` : p.url,
+    note,
+  };
+}

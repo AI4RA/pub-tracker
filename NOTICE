@@ -1,0 +1,48 @@
+Pub Tracker
+Copyright 2026 Nathan Layman and Stephen Wright
+
+Authors:
+  Nathan Layman, University of Idaho
+  Stephen Wright, Idaho State University
+https://github.com/ui-insight/pub-tracker
+
+Pub Tracker is a partnership of the University of Idaho, Idaho State
+University, and AI4RA.
+https://github.com/AI4RA
+
+This material is based upon work supported by the U.S. National Science
+Foundation under the GRANTED program, award number 2427549, "Crossing the
+Innovation Valley of Death: Democratizing Data and Artificial Intelligence
+for Research Administration." Any opinions, findings, conclusions or
+recommendations expressed in this material are those of the authors and do
+not necessarily reflect the views of the National Science Foundation.
+
+This file is an attribution notice under Section 4(d) of the Apache
+License, Version 2.0. Any redistribution of this work, or of a derivative
+work, must include a readable copy of the attribution notices above, crediting
+all of the following: Nathan Layman and Stephen Wright as the authors, the
+University of Idaho, Idaho State University, the AI4RA project, and National
+Science Foundation award 2427549.
+
+------------------------------------------------------------------------
+Third-party software
+
+Pub Tracker loads the following open source library in the browser from a
+public CDN. It remains under its own license and copyright; it is not
+modified or redistributed by this project.
+
+SheetJS Community Edition 0.18.5 (reading CSV/XLSX, writing XLSX)
+  Copyright (C) 2012-present SheetJS LLC
+  Apache License 2.0 - https://github.com/SheetJS/sheetjs/blob/master/LICENSE
+
+------------------------------------------------------------------------
+Data sources
+
+Pub Tracker queries these public services directly from the user's browser.
+Their data is not redistributed by this project; each service's own terms
+apply to what it returns.
+
+OpenAlex - https://openalex.org (data released under CC0)
+Semantic Scholar Academic Graph API - https://www.semanticscholar.org/product/api
+NCBI E-utilities (PubMed) - https://www.ncbi.nlm.nih.gov/books/NBK25497/
+ORCID Public API - https://info.orcid.org/documentation/features/public-api/
