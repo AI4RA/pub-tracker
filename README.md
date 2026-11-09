@@ -4,7 +4,7 @@ Upload a spreadsheet of principal investigators and get back an Excel file with 
 
 Everything runs in your browser. There is no server of ours in the middle: the file is read locally, your browser calls each database directly, and the workbook is built locally.
 
-**Live:** [ui-insight.github.io/pub-tracker](https://ui-insight.github.io/pub-tracker/)
+**Live:** [ai4ra.github.io/pub-tracker](https://ai4ra.github.io/pub-tracker/)
 
 ## How it works
 

@@ -4,8 +4,8 @@ title: "Pub Tracker"
 type: software
 date-released: 2026-11-09
 license: Apache-2.0
-repository-code: "https://github.com/ui-insight/pub-tracker"
-url: "https://ui-insight.github.io/pub-tracker/"
+repository-code: "https://github.com/AI4RA/pub-tracker"
+url: "https://ai4ra.github.io/pub-tracker/"
 authors:
   - family-names: Layman
     given-names: Nathan

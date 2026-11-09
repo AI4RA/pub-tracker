@@ -121,7 +121,7 @@ export function writeWorkbook(records, meta) {
     ['Google Scholar cannot be searched from a web page, so the "Google Scholar search" link opens a date-sorted search to check by hand.'],
     ['Common names can match the wrong person. Adding an institution or ORCID column to your file gives the best matches.'],
     [],
-    ['Pub Tracker', 'https://ui-insight.github.io/pub-tracker/'],
+    ['Pub Tracker', 'https://ai4ra.github.io/pub-tracker/'],
     ['A partnership of the University of Idaho, Idaho State University, and AI4RA (NSF award 2427549).'],
   ];
   const ws3 = XLSX.utils.aoa_to_sheet(about);
