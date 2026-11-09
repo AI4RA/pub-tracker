@@ -7,7 +7,7 @@ import { getJSON, Limiter } from '../http.js';
 import { normDate, normalizeDoi } from '../match.js';
 
 const BASE = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils';
-const limiter = new Limiter(370);
+const limiter = new Limiter(400);
 
 export const id = 'pubmed';
 export const label = 'PubMed';
@@ -32,7 +32,7 @@ async function search(term, keys, signal) {
 
 export async function lookup(pi, ctx) {
   const { keys, signal } = ctx;
-  limiter.setInterval(keys.ncbi ? 110 : 370);
+  limiter.setInterval(keys.ncbi ? 120 : 400);
   const { first, middle, last } = pi.name;
   if (!last) return { status: 'none', note: 'No surname' };
 

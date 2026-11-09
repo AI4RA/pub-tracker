@@ -9,21 +9,29 @@ import { dateKey, titleKey } from './match.js';
 
 export const SOURCES = [openalex, s2, pubmed, orcid, scholar];
 
-export async function lookupPI(pi, { enabled, keys, signal }) {
+// `paused` (a Map, one per run) holds sources that hit a quota or refused
+// a key: they are skipped for the rest of the run instead of failing, and
+// stalling, once per PI.
+export async function lookupPI(pi, { enabled, keys, signal, paused = new Map() }) {
   const ctx = { keys, signal };
   const results = {};
+  const fail = (id, e) => {
+    if (e.name === 'AbortError') throw e;
+    if (e.limit) paused.set(id, e.message);
+    results[id] = { status: 'error', note: e.message };
+  };
+  for (const [id, msg] of paused) if (enabled.has(id)) results[id] = { status: 'skipped', note: msg };
 
   // ORCID first: an iD tied to the institution lets OpenAlex and Semantic
   // Scholar match exactly instead of by name.
   let hinted = pi;
-  if (enabled.has('orcid')) {
+  if (enabled.has('orcid') && !results.orcid) {
     try {
       ctx.orcidResult = await orcid.findOrcid(pi, ctx);
       const o = ctx.orcidResult;
       if (o.orcid && !pi.orcid && /institution/.test(o.note)) hinted = { ...pi, orcid: o.orcid };
     } catch (e) {
-      if (e.name === 'AbortError') throw e;
-      results.orcid = { status: 'error', note: e.message };
+      fail('orcid', e);
     }
   }
 
@@ -31,8 +39,7 @@ export async function lookupPI(pi, { enabled, keys, signal }) {
     try {
       results[s.id] = await s.lookup(s.id === 'orcid' ? pi : hinted, ctx);
     } catch (e) {
-      if (e.name === 'AbortError') throw e;
-      results[s.id] = { status: 'error', note: e.message };
+      fail(s.id, e);
     }
   }));
 

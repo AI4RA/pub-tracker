@@ -162,6 +162,7 @@ table.results tr.pending td { color: var(--muted); }
 .chip.found { background: #f0fdf4; border-color: #bbf7d0; }
 .chip.none { background: #f9fafb; color: var(--muted); }
 .chip.error { background: #fef2f2; border-color: #fecaca; color: var(--bad); }
+.chip.skipped { background: #fffbeb; border-color: #fde68a; color: var(--warn); }
 .chip.link { background: #eff6ff; border-color: #bfdbfe; }
 
 /* ── Modals ── */

@@ -5,6 +5,14 @@ import { readTable, guessColumns, writeWorkbook, downloadTemplate } from './io.j
 import { lookupPI, SOURCES } from './lookup.js';
 import { parseName, normalizeOrcid } from './match.js';
 import { searchUrl } from './sources/scholar.js';
+import { events as httpEvents } from './http.js';
+
+const HOSTS = {
+  'api.openalex.org': 'OpenAlex',
+  'api.semanticscholar.org': 'Semantic Scholar',
+  'eutils.ncbi.nlm.nih.gov': 'PubMed',
+  'pub.orcid.org': 'ORCID',
+};
 
 const $ = id => document.getElementById(id);
 const CONCURRENCY = 3;
@@ -176,6 +184,7 @@ async function run() {
   state.controller = new AbortController();
   const signal = state.controller.signal;
   const keys = allKeys();
+  const paused = new Map();
 
   $('run-btn').disabled = true;
   $('stop-btn').hidden = false;
@@ -186,12 +195,25 @@ async function run() {
   const rows = pis.map(pi => addRow(pi));
   let done = 0;
   const started = Date.now();
+  let waitNote = '';
+  let waitTimer = null;
   const tick = () => {
     $('progress-bar').style.width = `${(done / pis.length) * 100}%`;
     const per = done ? (Date.now() - started) / done : 0;
     const left = per ? Math.round((per * (pis.length - done)) / 1000) : 0;
-    $('status-line').textContent = `${done} of ${pis.length} PIs searched${done && done < pis.length ? `, about ${fmtSecs(left)} left` : ''}.`;
+    const skipped = [...paused.keys()].map(id => SOURCES.find(s => s.id === id)?.label).filter(Boolean);
+    $('status-line').textContent = `${done} of ${pis.length} PIs searched${done && done < pis.length ? `, about ${fmtSecs(left)} left` : ''}.`
+      + (waitNote ? ` ${waitNote}` : '')
+      + (skipped.length ? ` ${skipped.join(' and ')} reached a limit and ${skipped.length > 1 ? 'are' : 'is'} skipped for the rest of this run.` : '');
   };
+  const onWait = e => {
+    const { host, ms, why } = e.detail;
+    waitNote = `Waiting ${Math.max(1, Math.round(ms / 1000))} s for ${HOSTS[host] || host} (${why}).`;
+    tick();
+    clearTimeout(waitTimer);
+    waitTimer = setTimeout(() => { waitNote = ''; tick(); }, ms + 500);
+  };
+  httpEvents.addEventListener('wait', onWait);
   tick();
 
   let next = 0;
@@ -199,7 +221,7 @@ async function run() {
     while (next < pis.length && !signal.aborted) {
       const i = next++;
       try {
-        const rec = await lookupPI(pis[i], { enabled, keys, signal });
+        const rec = await lookupPI(pis[i], { enabled, keys, signal, paused });
         state.records[i] = rec;
         fillRow(rows[i], rec);
       } catch (e) {
@@ -213,13 +235,17 @@ async function run() {
     }
   };
   await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+  httpEvents.removeEventListener('wait', onWait);
+  clearTimeout(waitTimer);
 
   state.running = false;
   $('run-btn').disabled = false;
   $('stop-btn').hidden = true;
   document.querySelectorAll('#step-upload, #step-columns').forEach(el => el.classList.remove('disabled'));
   const found = state.records.filter(r => r?.best).length;
-  $('status-line').textContent = `${signal.aborted ? 'Stopped. ' : ''}${done} of ${pis.length} PIs searched; a recent paper was found for ${found}.`;
+  const skipped = [...paused.entries()].map(([id, msg]) => `${SOURCES.find(s => s.id === id)?.label}: ${msg}`);
+  $('status-line').textContent = `${signal.aborted ? 'Stopped. ' : ''}${done} of ${pis.length} PIs searched; a recent paper was found for ${found}.`
+    + (skipped.length ? ` ${skipped.join(' ')}` : '');
   $('download-btn').disabled = done === 0;
 }
 
@@ -275,7 +301,7 @@ function fillRow(tr, rec, error) {
     }
     const r = rec.results[s.id];
     if (!r) continue;
-    const label = r.status === 'found' ? `${s.label} ${r.date?.slice(0, 4) || ''}` : `${s.label}: ${r.status === 'none' ? 'none' : 'error'}`;
+    const label = r.status === 'found' ? `${s.label} ${r.date?.slice(0, 4) || ''}` : `${s.label}: ${r.status === 'none' ? 'none' : r.status === 'skipped' ? 'skipped' : 'error'}`;
     const chip = r.url ? a(label, r.url, `chip ${r.status}`) : el('span', { className: `chip ${r.status}`, textContent: label });
     chip.title = [r.title, r.note].filter(Boolean).join('\n');
     chips.append(chip);
